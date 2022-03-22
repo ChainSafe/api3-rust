@@ -1,13 +1,11 @@
-pub struct DataPoint {
-    value: ethereum_types::U256,
-    timestamp: u32
-}
+use borsh::{ BorshSerialize, BorshDeserialize };
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
+pub type Bytes = Vec<u8>;
+pub type Bytes32 = [u8; 32];
+pub type Uint256 = [u8; 32];
+
+#[derive(BorshDeserialize, BorshSerialize, Clone)]
+pub struct DataPoint {
+    value: Uint256,
+    timestamp: u32
 }

@@ -17,4 +17,5 @@ default = []
 
 [dependencies]
 anchor-lang = "0.23.0"
+api3-common = { path = "../../../../common"}
 #ethereum-types = "0.13.1"
