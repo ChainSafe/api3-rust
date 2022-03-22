@@ -1,3 +1,8 @@
+pub struct DataPoint {
+    value: ethereum_types::U256,
+    timestamp: u32
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
