@@ -1,4 +1,6 @@
 import * as anchor from "@project-serum/anchor";
+import { PublicKey, SystemProgram, Transaction, TransactionInstruction, Commitment } from '@solana/web3.js';
+import { expect } from "chai";
 import * as fs from "fs";
 
 describe("beacon-server", () => {
@@ -12,11 +14,9 @@ describe("beacon-server", () => {
   const programId = new anchor.web3.PublicKey("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
   const program = new anchor.Program(idl, programId);
 
-  const testAccount = anchor.web3.Keypair.generate();
+  const beaconID = Buffer.from("0384392".padEnd(64, "0"), "hex");
 
-  it("Is initialized!", async () => {
-    const beaconIdRaw = "0384392".padEnd(64, "0");
-    const beaconID = Buffer.from(beaconIdRaw, "hex");
+  it("updateBeaconWithSignedData", async () => {
     const templateID = Buffer.allocUnsafe(32);
     const timestamp = Buffer.allocUnsafe(32);
     const data = Buffer.from(anchor.utils.bytes.utf8.encode("random-test-data"));
@@ -30,7 +30,7 @@ describe("beacon-server", () => {
       program.programId
     )
 
-    const tx = await program.rpc.newBeacon(
+    const tx = await program.rpc.updateBeaconWithSignedData(
       beaconID,
       templateID,
       timestamp,
@@ -44,6 +44,48 @@ describe("beacon-server", () => {
         }
       }
     );
-    console.log("Your transaction signature", tx);
+
+    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(beaconIdPDA);
+    console.log(data);
+    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
+  });
+
+
+  it("updateDapiWithBeacons", async () => {
+    const [beaconIdPDA] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from(anchor.utils.bytes.utf8.encode("beacon-id")),
+        beaconID
+      ],
+      program.programId
+    )
+
+    const tempDAPIId = Buffer.from("1".padEnd(64, "0"), "hex");
+    const [dapiPDA] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from(anchor.utils.bytes.utf8.encode("dapi-id")),
+        tempDAPIId
+      ],
+      program.programId
+    )
+
+    const tx = await program.rpc.updateDapiWithBeacons(
+      tempDAPIId,
+      [beaconID],
+      {
+        accounts: {
+          dapi: dapiPDA,
+          user: anchor.getProvider().wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        remainingAccounts: [
+          { isSigner: false, isWritable: false, pubkey: beaconIdPDA }
+        ],
+      }
+    );
+
+    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
+    console.log(JSON.stringify(wrappedDataPoint));
+    // expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
   });
 });
