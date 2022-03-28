@@ -1,5 +1,4 @@
 import * as anchor from "@project-serum/anchor";
-import { PublicKey, SystemProgram, Transaction, TransactionInstruction, Commitment } from '@solana/web3.js';
 import { expect } from "chai";
 import * as fs from "fs";
 
@@ -24,7 +23,7 @@ describe("beacon-server", () => {
 
     const [beaconIdPDA, beaconIdBump] = await anchor.web3.PublicKey.findProgramAddress(
       [
-        Buffer.from(anchor.utils.bytes.utf8.encode("beacon-id")),
+        Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
         beaconID
       ],
       program.programId
@@ -54,7 +53,7 @@ describe("beacon-server", () => {
   it("updateDapiWithBeacons", async () => {
     const [beaconIdPDA] = await anchor.web3.PublicKey.findProgramAddress(
       [
-        Buffer.from(anchor.utils.bytes.utf8.encode("beacon-id")),
+        Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
         beaconID
       ],
       program.programId
@@ -63,7 +62,7 @@ describe("beacon-server", () => {
     const tempDAPIId = Buffer.from("1".padEnd(64, "0"), "hex");
     const [dapiPDA] = await anchor.web3.PublicKey.findProgramAddress(
       [
-        Buffer.from(anchor.utils.bytes.utf8.encode("dapi-id")),
+        Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
         tempDAPIId
       ],
       program.programId
