@@ -12,13 +12,15 @@ pub mod beacon_server {
     /// the seed to generate pda for the Beacon data account.
     pub fn update_beacon_with_signed_data(
         ctx: Context<DataPointAccount>,
-        datapoint_id_key: [u8; 32],
+        datapoint_key: [u8; 32],
         _template_id: [u8; 32],
         _timestamp: [u8; 32],
         data: Vec<u8>,
         _signature: Vec<u8>,
     ) -> Result<()> {
         // TOOD: perform signature check
+
+        msg!("delete this in actual implementation: {:?}", datapoint_key);
 
         utils::update_beacon_data(&mut ctx.accounts.datapoint, data)?;
 
@@ -29,16 +31,16 @@ pub mod beacon_server {
     /// The beacon id is used as the seed to generate pda for the Beacon data account.
     pub fn update_dapi_with_beacons(
         ctx: Context<DataPointAccount>,
-        datapoint_id_key: [u8; 32],
+        datapoint_key: [u8; 32],
         beacon_ids: Vec<[u8; 32]>,
     ) -> Result<()> {
-        assert!(ctx.remaining_accounts.len() > 0);
+        assert!(!ctx.remaining_accounts.is_empty(), "must provide beacon accounts");
 
         let beacon_id_tuples = ctx
             .remaining_accounts
             .iter()
             .map(|item| -> Result<(Pubkey, Account<WrappedDataPoint>)> {
-                Account::try_from_unchecked(item).map(|i| (item.key.clone(), i))
+                Account::try_from_unchecked(item).map(|i| (*item.key, i))
             })
             .collect::<Result<Vec<(Pubkey, Account<WrappedDataPoint>)>>>()?;
 
@@ -47,7 +49,7 @@ pub mod beacon_server {
         }
 
         utils::check_beacon_ids(&beacon_ids, &beacon_id_tuples)?;
-        utils::check_dapi_id(&datapoint_id_key, &beacon_ids)?;
+        utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 
         let account = &mut ctx.accounts.datapoint;
         account.raw_datapoint = vec![1];
@@ -60,7 +62,7 @@ pub mod beacon_server {
     /// signature is omitted will be read from the storage.
     pub fn update_dapi_with_signed_data(
         _ctx: Context<DataPointAccount>,
-        datapoint_id_key: [u8; 32],
+        datapoint_key: [u8; 32],
         _beacon_ids: Vec<[u8; 32]>,
         _template_ids: Vec<[u8; 32]>,
         _timestamps: Vec<[u8; 32]>,
@@ -68,6 +70,8 @@ pub mod beacon_server {
         _signatures: Vec<Vec<u8>>,
     ) -> Result<()> {
         // TOOD: perform signature check
+
+        msg!("delete this in actual implementation: {:?}", datapoint_key);
 
         Ok(())
     }
@@ -79,17 +83,19 @@ pub mod beacon_server {
     /// dAPI, etc.
     pub fn set_name(
         _ctx: Context<DataPointIdAccount>,
-        hashed_name: [u8; 32],
+        datapoint_id_key: [u8; 32],
         _name: [u8; 32],
         _data_point_id: [u8; 32],
     ) -> Result<()> {
+        msg!("delete this in actual implementation: {:?}", datapoint_id_key);
         Ok(())
     }
 
     pub fn read_with_data_point_id(
         _ctx: Context<DataPointAccount>,
-        datapoint_id_key: [u8; 32],
+        datapoint_key: [u8; 32],
     ) -> Result<()> {
+        msg!("delete this in actual implementation: {:?}", datapoint_key);
         Ok(())
     }
 
@@ -98,19 +104,21 @@ pub mod beacon_server {
     /// must be whitelisted for the hash of the data point name.
     pub fn read_with_name(
         _ctx: Context<DataPointAccount>,
-        datapoint_id_key: [u8; 32],
+        datapoint_key: [u8; 32],
         _name: [u8; 32],
     ) -> Result<(u128, u32)> {
+        msg!("delete this in actual implementation: {:?}", datapoint_key);
         Ok((0, 0))
     }
 
     /// Returns if a reader can read the data point
     pub fn reader_can_read_data_point(
         _ctx: Context<DataPointAccount>,
-        datapoint_id_key: [u8; 32],
+        datapoint_key: [u8; 32],
         _name: [u8; 32],
         _reader: [u8; 32],
     ) -> Result<bool> {
+        msg!("delete this in actual implementation: {:?}", datapoint_key);
         Ok(false)
     }
 }

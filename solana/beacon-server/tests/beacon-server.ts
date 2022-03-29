@@ -21,36 +21,6 @@ describe("beacon-server", () => {
     const data = Buffer.from(anchor.utils.bytes.utf8.encode("random-test-data"));
     const signature = Buffer.from(anchor.utils.bytes.utf8.encode("random-test-signature"));
 
-    const [beaconIdPDA, beaconIdBump] = await anchor.web3.PublicKey.findProgramAddress(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
-        beaconID
-      ],
-      program.programId
-    )
-
-    const tx = await program.rpc.updateBeaconWithSignedData(
-      beaconID,
-      templateID,
-      timestamp,
-      data,
-      signature,
-      {
-        accounts: {
-          beacon: beaconIdPDA,
-          user: anchor.getProvider().wallet.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        }
-      }
-    );
-
-    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(beaconIdPDA);
-    console.log(data);
-    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
-  });
-
-
-  it("updateDapiWithBeacons", async () => {
     const [beaconIdPDA] = await anchor.web3.PublicKey.findProgramAddress(
       [
         Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
@@ -59,32 +29,61 @@ describe("beacon-server", () => {
       program.programId
     )
 
-    const tempDAPIId = Buffer.from("1".padEnd(64, "0"), "hex");
-    const [dapiPDA] = await anchor.web3.PublicKey.findProgramAddress(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
-        tempDAPIId
-      ],
-      program.programId
-    )
-
-    const tx = await program.rpc.updateDapiWithBeacons(
-      tempDAPIId,
-      [beaconID],
+    // TODO: use methods here
+    await program.rpc.updateBeaconWithSignedData(
+      beaconID,
+      templateID,
+      timestamp,
+      data,
+      signature,
       {
         accounts: {
-          dapi: dapiPDA,
+          datapoint: beaconIdPDA,
           user: anchor.getProvider().wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
-        },
-        remainingAccounts: [
-          { isSigner: false, isWritable: false, pubkey: beaconIdPDA }
-        ],
+        }
       }
     );
 
-    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
-    console.log(JSON.stringify(wrappedDataPoint));
-    // expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
+    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(beaconIdPDA);
+    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
   });
+
+  // it("updateDapiWithBeacons", async () => {
+  //   const [beaconIdPDA] = await anchor.web3.PublicKey.findProgramAddress(
+  //     [
+  //       Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
+  //       beaconID
+  //     ],
+  //     program.programId
+  //   )
+
+  //   const tempDAPIId = Buffer.from("1".padEnd(64, "0"), "hex");
+  //   const [dapiPDA] = await anchor.web3.PublicKey.findProgramAddress(
+  //     [
+  //       Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
+  //       tempDAPIId
+  //     ],
+  //     program.programId
+  //   )
+
+  //   const tx = await program.rpc.updateDapiWithBeacons(
+  //     tempDAPIId,
+  //     [beaconID],
+  //     {
+  //       accounts: {
+  //         dapi: dapiPDA,
+  //         user: anchor.getProvider().wallet.publicKey,
+  //         systemProgram: anchor.web3.SystemProgram.programId,
+  //       },
+  //       remainingAccounts: [
+  //         { isSigner: false, isWritable: false, pubkey: beaconIdPDA }
+  //       ],
+  //     }
+  //   );
+
+  //   const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
+  //   console.log(JSON.stringify(wrappedDataPoint));
+  //   // expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
+  // });
 });
