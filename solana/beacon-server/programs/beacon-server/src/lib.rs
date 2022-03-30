@@ -44,10 +44,6 @@ pub mod beacon_server {
             })
             .collect::<Result<Vec<(Pubkey, Account<WrappedDataPoint>)>>>()?;
 
-        for t in beacon_id_tuples.iter().clone() {
-            panic!("{:?}, {:?}", t.0, t.1.raw_datapoint);
-        }
-
         utils::check_beacon_ids(&beacon_ids, &beacon_id_tuples)?;
         utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 

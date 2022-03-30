@@ -49,41 +49,41 @@ describe("beacon-server", () => {
     expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
   });
 
-  // it("updateDapiWithBeacons", async () => {
-  //   const [beaconIdPDA] = await anchor.web3.PublicKey.findProgramAddress(
-  //     [
-  //       Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
-  //       beaconID
-  //     ],
-  //     program.programId
-  //   )
+  it("updateDapiWithBeacons", async () => {
+    const [beaconIdPDA] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
+        beaconID
+      ],
+      program.programId
+    )
 
-  //   const tempDAPIId = Buffer.from("1".padEnd(64, "0"), "hex");
-  //   const [dapiPDA] = await anchor.web3.PublicKey.findProgramAddress(
-  //     [
-  //       Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
-  //       tempDAPIId
-  //     ],
-  //     program.programId
-  //   )
+    const tempDAPIId = Buffer.from("1".padEnd(64, "0"), "hex");
+    const [dapiPDA] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
+        tempDAPIId
+      ],
+      program.programId
+    )
 
-  //   const tx = await program.rpc.updateDapiWithBeacons(
-  //     tempDAPIId,
-  //     [beaconID],
-  //     {
-  //       accounts: {
-  //         dapi: dapiPDA,
-  //         user: anchor.getProvider().wallet.publicKey,
-  //         systemProgram: anchor.web3.SystemProgram.programId,
-  //       },
-  //       remainingAccounts: [
-  //         { isSigner: false, isWritable: false, pubkey: beaconIdPDA }
-  //       ],
-  //     }
-  //   );
+    const tx = await program.rpc.updateDapiWithBeacons(
+      tempDAPIId,
+      [beaconID],
+      {
+        accounts: {
+          dapi: dapiPDA,
+          user: anchor.getProvider().wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        remainingAccounts: [
+          { isSigner: false, isWritable: false, pubkey: beaconIdPDA }
+        ],
+      }
+    );
 
-  //   const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
-  //   console.log(JSON.stringify(wrappedDataPoint));
-  //   // expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
-  // });
+    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
+    console.log(JSON.stringify(wrappedDataPoint));
+    // expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
+  });
 });
