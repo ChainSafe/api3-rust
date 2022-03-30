@@ -1,6 +1,7 @@
 mod error;
 mod datapoint;
 mod manager;
+mod eth;
 
 pub use error::Error;
 pub use datapoint::DataPoint;

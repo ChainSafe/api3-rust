@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 borsh = "0.9"
+# seems anchor build does not support more recent versions due to rustc lagging behind. Need
+# to wait for solana to up their rustc version
+ethabi = "12.0.0"
