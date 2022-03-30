@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 borsh = "0.9"
+ethereum-types = "0.13"
