@@ -1,7 +1,7 @@
 //! ABI decoder.
 
-use crate::abi::Token;
 use crate::abi::types::{ParamType, Word};
+use crate::abi::Token;
 use crate::Error;
 
 #[derive(Debug)]
@@ -68,7 +68,7 @@ fn take_bytes(data: &[u8], offset: usize, len: usize) -> Result<Vec<u8>, Error> 
     if offset + len > data.len() {
         Err(Error::InvalidData)
     } else {
-        Ok((&data[offset..(offset + len)]).to_vec())
+        Ok((data[offset..(offset + len)]).to_vec())
     }
 }
 
@@ -78,26 +78,38 @@ fn decode_param(param: &ParamType, data: &[u8], offset: usize) -> Result<DecodeR
             let slice = peek_32_bytes(data, offset)?;
             let mut address = [0u8; 20];
             address.copy_from_slice(&slice[12..]);
-            let result = DecodeResult { token: Token::Address(address.into()), new_offset: offset + 32 };
+            let result = DecodeResult {
+                token: Token::Address(address),
+                new_offset: offset + 32,
+            };
             Ok(result)
         }
         ParamType::Uint(_) => {
             let slice = peek_32_bytes(data, offset)?;
-            let result = DecodeResult { token: Token::Uint(slice.into()), new_offset: offset + 32 };
+            let result = DecodeResult {
+                token: Token::Uint(slice.into()),
+                new_offset: offset + 32,
+            };
             Ok(result)
         }
         ParamType::FixedBytes(len) => {
             // FixedBytes is anything from bytes1 to bytes32. These values
             // are padded with trailing zeros to fill 32 bytes.
             let bytes = take_bytes(data, offset, len)?;
-            let result = DecodeResult { token: Token::FixedBytes(bytes), new_offset: offset + 32 };
+            let result = DecodeResult {
+                token: Token::FixedBytes(bytes),
+                new_offset: offset + 32,
+            };
             Ok(result)
         }
         ParamType::Bytes => {
             let dynamic_offset = as_usize(&peek_32_bytes(data, offset)?)?;
             let len = as_usize(&peek_32_bytes(data, dynamic_offset)?)?;
             let bytes = take_bytes(data, dynamic_offset + 32, len)?;
-            let result = DecodeResult { token: Token::Bytes(bytes), new_offset: offset + 32 };
+            let result = DecodeResult {
+                token: Token::Bytes(bytes),
+                new_offset: offset + 32,
+            };
             Ok(result)
         }
         ParamType::String => {
@@ -119,10 +131,10 @@ fn decode_param(param: &ParamType, data: &[u8], offset: usize) -> Result<DecodeR
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::abi::decode::decode;
-    use crate::abi::{ Uint, Token };
     use crate::abi::types::ParamType;
+    use crate::abi::{Token, Uint};
+    use hex_literal::hex;
 
     #[test]
     fn decode_from_empty_byte_slice() {
@@ -138,7 +150,7 @@ mod tests {
     #[test]
     fn decode_data_with_size_that_is_not_a_multiple_of_32() {
         let encoded = hex!(
-			"
+            "
             0000000000000000000000000000000000000000000000000000000000000000
             00000000000000000000000000000000000000000000000000000000000000a0
             0000000000000000000000000000000000000000000000000000000000000152
@@ -153,7 +165,7 @@ mod tests {
             0000000000000000000000000000000000103933633731376537633061363531
             3761
         "
-		);
+        );
 
         assert_eq!(
             decode(
@@ -179,7 +191,7 @@ mod tests {
     #[test]
     fn decode_after_fixed_bytes_with_less_than_32_bytes() {
         let encoded = hex!(
-			"
+            "
 			0000000000000000000000008497afefdc5ac170a664a231f6efb25526ef813f
 			0000000000000000000000000000000000000000000000000000000000000000
 			0000000000000000000000000000000000000000000000000000000000000000
@@ -187,14 +199,19 @@ mod tests {
 			000000000000000000000000000000000000000000000000000000000000000a
 			3078303030303030314600000000000000000000000000000000000000000000
 		"
-		);
+        );
 
         assert_eq!(
             decode(
-                &[ParamType::Address, ParamType::FixedBytes(32), ParamType::FixedBytes(4), ParamType::String,],
+                &[
+                    ParamType::Address,
+                    ParamType::FixedBytes(32),
+                    ParamType::FixedBytes(4),
+                    ParamType::String,
+                ],
                 &encoded,
             )
-                .unwrap(),
+            .unwrap(),
             &[
                 Token::Address(hex!("8497afefdc5ac170a664a231f6efb25526ef813f").into()),
                 Token::FixedBytes([0u8; 32].to_vec()),
@@ -207,13 +224,16 @@ mod tests {
     #[test]
     fn decode_broken_utf8() {
         let encoded = hex!(
-			"
+            "
 			0000000000000000000000000000000000000000000000000000000000000020
 			0000000000000000000000000000000000000000000000000000000000000004
 			e4b88de500000000000000000000000000000000000000000000000000000000
         "
-		);
+        );
 
-        assert_eq!(decode(&[ParamType::String,], &encoded).unwrap(), &[Token::String("不�".into())]);
+        assert_eq!(
+            decode(&[ParamType::String,], &encoded).unwrap(),
+            &[Token::String("不�".into())]
+        );
     }
 }

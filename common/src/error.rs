@@ -2,5 +2,5 @@
 pub enum Error {
     CannotDeserializeDataPoint,
     InvalidData,
-    InvalidName(String)
+    InvalidName(String),
 }

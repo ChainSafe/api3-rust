@@ -1,16 +1,17 @@
 use tiny_keccak::{Hasher, Keccak};
 
 #[cfg(feature = "simple-abi")]
+pub mod decode;
+#[cfg(feature = "simple-abi")]
+pub mod encode;
+#[cfg(feature = "simple-abi")]
 mod types;
-#[cfg(feature = "simple-abi")]
-mod encode;
-#[cfg(feature = "simple-abi")]
-mod decode;
 
 #[cfg(feature = "eth")]
 pub use ethabi::Token;
 #[cfg(feature = "simple-abi")]
 pub use types::*;
+
 use crate::{Bytes, Bytes32};
 
 /// Rust implementation of solidity abi.encodePacked(...)
@@ -35,11 +36,11 @@ fn pack(t: &Token) -> Vec<u8> {
             let mut v = vec![0u8; 32];
             n.to_big_endian(&mut v);
             res.extend(v);
-        },
+        }
         Token::Bytes(b) => res.extend(b),
         _ => panic!("not supported yet"),
     };
-    return res;
+    res
 }
 
 pub fn keccak(x: &[u8]) -> Bytes32 {
@@ -52,8 +53,8 @@ pub fn keccak(x: &[u8]) -> Bytes32 {
 
 #[cfg(test)]
 mod tests {
+    use crate::abi::types::{Address, Uint};
     use crate::abi::{encode_packed, keccak, Token};
-    use crate::abi::types::{Uint, Address };
 
     #[test]
     fn encode_packed_works() {
@@ -64,20 +65,29 @@ mod tests {
         u256[0] = 8;
         u256[1] = 10;
         let (_, hex_str) = encode_packed(&[Token::Uint(Uint::from(u256))]);
-        assert_eq!(hex_str, "080a000000000000000000000000000000000000000000000000000000000000");
+        assert_eq!(
+            hex_str,
+            "080a000000000000000000000000000000000000000000000000000000000000"
+        );
 
         let mut h160 = [0u8; 20];
         h160.copy_from_slice(&hex::decode("85B0c8b91707B68C0B23388001B9dC7aab3f6A81").unwrap());
         let (_, hex_str) = encode_packed(&[
             Token::String("hello_world".parse().unwrap()),
-            Token::Address(Address::from(h160))
+            Token::Address(Address::from(h160)),
         ]);
-        assert_eq!(hex_str, "68656c6c6f5f776f726c6485b0c8b91707b68c0b23388001b9dc7aab3f6a81");
+        assert_eq!(
+            hex_str,
+            "68656c6c6f5f776f726c6485b0c8b91707b68c0b23388001b9dc7aab3f6a81"
+        );
     }
 
     #[test]
     fn keccak_works() {
         let bytes = keccak(&vec![1, 2, 3]);
-        assert_eq!(hex::encode(bytes), "f1885eda54b7a053318cd41e2093220dab15d65381b1157a3633a83bfd5c9239");
+        assert_eq!(
+            hex::encode(bytes),
+            "f1885eda54b7a053318cd41e2093220dab15d65381b1157a3633a83bfd5c9239"
+        );
     }
 }

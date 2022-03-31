@@ -8,7 +8,7 @@ pub type Word = [u8; 32];
 #[derive(Debug, PartialEq, Clone)]
 pub struct U256 {
     /// inner should be big endian order
-    inner: [u8; 32]
+    inner: [u8; 32],
 }
 
 impl U256 {
@@ -19,7 +19,7 @@ impl U256 {
         assert!(Self::BYTES >= slice.len());
 
         let mut inner = [0u8; Self::BYTES];
-        inner[Self::BYTES - slice.len() .. Self::BYTES].copy_from_slice(&slice);
+        inner[Self::BYTES - slice.len()..Self::BYTES].copy_from_slice(slice);
 
         Self { inner }
     }
@@ -41,7 +41,6 @@ impl From<[u8; 32]> for U256 {
         U256::from_big_endian(&inner)
     }
 }
-
 
 impl From<U256> for [u8; 32] {
     fn from(u: U256) -> Self {
@@ -109,10 +108,7 @@ impl ParamType {
     /// returns whether a ParamType is dynamic
     /// used to decide how the ParamType should be encoded
     pub fn is_dynamic(&self) -> bool {
-        match self {
-            ParamType::Bytes | ParamType::String => true,
-            _ => false,
-        }
+        matches!(self, ParamType::Bytes | ParamType::String)
     }
 }
 

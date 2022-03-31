@@ -1,6 +1,9 @@
 //! ABI encoder.
 
-use crate::abi::{Token, types::{Word, Bytes }};
+use crate::abi::{
+    types::{Bytes, Word},
+    Token,
+};
 
 /// Converts a u32 to a right aligned array of 32 bytes.
 pub fn pad_u32(value: u32) -> Word {
@@ -76,16 +79,21 @@ impl Mediate {
 fn encode_head_tail(mediates: &[Mediate]) -> Vec<Word> {
     let heads_len = mediates.iter().fold(0, |acc, m| acc + m.head_len());
 
-    let (mut result, len) =
-        mediates.iter().fold((Vec::with_capacity(heads_len as usize), heads_len), |(mut acc, offset), m| {
+    let (mut result, len) = mediates.iter().fold(
+        (Vec::with_capacity(heads_len as usize), heads_len),
+        |(mut acc, offset), m| {
             acc.extend(m.head(offset));
             (acc, offset + m.tail_len())
-        });
+        },
+    );
 
-    let tails = mediates.iter().fold(Vec::with_capacity((len - heads_len) as usize), |mut acc, m| {
-        acc.extend(m.tail());
-        acc
-    });
+    let tails = mediates.iter().fold(
+        Vec::with_capacity((len - heads_len) as usize),
+        |mut acc, m| {
+            acc.extend(m.tail());
+            acc
+        },
+    );
 
     result.extend(tails);
     result
@@ -95,7 +103,10 @@ fn encode_head_tail(mediates: &[Mediate]) -> Vec<Word> {
 pub fn encode(tokens: &[Token]) -> Bytes {
     let mediates = &tokens.iter().map(encode_token).collect::<Vec<_>>();
 
-    encode_head_tail(mediates).iter().flat_map(|word| word.to_vec()).collect()
+    encode_head_tail(mediates)
+        .iter()
+        .flat_map(|word| word.to_vec())
+        .collect()
 }
 
 fn encode_token(token: &Token) -> Mediate {
@@ -132,12 +143,12 @@ mod tests {
         let address2 = Token::Address([0x22u8; 20].into());
         let encoded = encode(&[address1, address2]);
         let expected = hex!(
-			"
+            "
 			0000000000000000000000001111111111111111111111111111111111111111
 			0000000000000000000000002222222222222222222222222222222222222222
 		"
-		)
-            .to_vec();
+        )
+        .to_vec();
         assert_eq!(encoded, expected);
     }
 
@@ -146,13 +157,13 @@ mod tests {
         let bytes = Token::Bytes(vec![0x12, 0x34]);
         let encoded = encode(&[bytes]);
         let expected = hex!(
-			"
+            "
 			0000000000000000000000000000000000000000000000000000000000000020
 			0000000000000000000000000000000000000000000000000000000000000002
 			1234000000000000000000000000000000000000000000000000000000000000
 		"
-		)
-            .to_vec();
+        )
+        .to_vec();
         assert_eq!(encoded, expected);
     }
 
@@ -169,28 +180,30 @@ mod tests {
         let s = Token::String("gavofyork".to_owned());
         let encoded = encode(&[s]);
         let expected = hex!(
-			"
+            "
 			0000000000000000000000000000000000000000000000000000000000000020
 			0000000000000000000000000000000000000000000000000000000000000009
 			6761766f66796f726b0000000000000000000000000000000000000000000000
 		"
-		)
-            .to_vec();
+        )
+        .to_vec();
         assert_eq!(encoded, expected);
     }
 
     #[test]
     fn encode_bytes2() {
-        let bytes = Token::Bytes(hex!("10000000000000000000000000000000000000000000000000000000000002").to_vec());
+        let bytes = Token::Bytes(
+            hex!("10000000000000000000000000000000000000000000000000000000000002").to_vec(),
+        );
         let encoded = encode(&[bytes]);
         let expected = hex!(
-			"
+            "
 			0000000000000000000000000000000000000000000000000000000000000020
 			000000000000000000000000000000000000000000000000000000000000001f
 			1000000000000000000000000000000000000000000000000000000000000200
 		"
-		)
-            .to_vec();
+        )
+        .to_vec();
         assert_eq!(encoded, expected);
     }
 
@@ -198,33 +211,37 @@ mod tests {
     fn encode_bytes3() {
         let bytes = Token::Bytes(
             hex!(
-				"
+                "
 			1000000000000000000000000000000000000000000000000000000000000000
 			1000000000000000000000000000000000000000000000000000000000000000
 		"
-			)
-                .to_vec(),
+            )
+            .to_vec(),
         );
         let encoded = encode(&[bytes]);
         let expected = hex!(
-			"
+            "
 			0000000000000000000000000000000000000000000000000000000000000020
 			0000000000000000000000000000000000000000000000000000000000000040
 			1000000000000000000000000000000000000000000000000000000000000000
 			1000000000000000000000000000000000000000000000000000000000000000
 		"
-		)
-            .to_vec();
+        )
+        .to_vec();
         assert_eq!(encoded, expected);
     }
 
     #[test]
     fn encode_two_bytes() {
-        let bytes1 = Token::Bytes(hex!("10000000000000000000000000000000000000000000000000000000000002").to_vec());
-        let bytes2 = Token::Bytes(hex!("0010000000000000000000000000000000000000000000000000000000000002").to_vec());
+        let bytes1 = Token::Bytes(
+            hex!("10000000000000000000000000000000000000000000000000000000000002").to_vec(),
+        );
+        let bytes2 = Token::Bytes(
+            hex!("0010000000000000000000000000000000000000000000000000000000000002").to_vec(),
+        );
         let encoded = encode(&[bytes1, bytes2]);
         let expected = hex!(
-			"
+            "
 			0000000000000000000000000000000000000000000000000000000000000040
 			0000000000000000000000000000000000000000000000000000000000000080
 			000000000000000000000000000000000000000000000000000000000000001f
@@ -232,8 +249,8 @@ mod tests {
 			0000000000000000000000000000000000000000000000000000000000000020
 			0010000000000000000000000000000000000000000000000000000000000002
 		"
-		)
-            .to_vec();
+        )
+        .to_vec();
         assert_eq!(encoded, expected);
     }
 
