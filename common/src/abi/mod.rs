@@ -1,14 +1,17 @@
-use ethabi::Token;
 use tiny_keccak::{Hasher, Keccak};
-use crate::{Bytes, Bytes32};
 
-pub fn keccak(x: &[u8]) -> Bytes32 {
-    let mut keccak = Keccak::v256();
-    keccak.update(x);
-    let mut out = [0u8; 32];
-    keccak.finalize(&mut out);
-    out
-}
+#[cfg(feature = "simple-abi")]
+mod types;
+#[cfg(feature = "simple-abi")]
+mod encode;
+#[cfg(feature = "simple-abi")]
+mod decode;
+
+#[cfg(feature = "eth")]
+pub use ethabi::Token;
+#[cfg(feature = "simple-abi")]
+pub use types::*;
+use crate::{Bytes, Bytes32};
 
 /// Rust implementation of solidity abi.encodePacked(...)
 pub fn encode_packed(items: &[Token]) -> (Bytes, String) {
@@ -27,7 +30,7 @@ fn pack(t: &Token) -> Vec<u8> {
     let mut res = Vec::new();
     match t {
         Token::String(s) => res.extend(s.as_bytes()),
-        Token::Address(a) => res.extend(a.as_bytes()),
+        Token::Address(a) => res.extend(a.iter()),
         Token::Uint(n) => {
             let mut v = vec![0u8; 32];
             n.to_big_endian(&mut v);
@@ -39,10 +42,18 @@ fn pack(t: &Token) -> Vec<u8> {
     return res;
 }
 
+pub fn keccak(x: &[u8]) -> Bytes32 {
+    let mut keccak = Keccak::v256();
+    keccak.update(x);
+    let mut out = [0u8; 32];
+    keccak.finalize(&mut out);
+    out
+}
+
 #[cfg(test)]
 mod tests {
-    use ethabi::{Address, Token, Uint};
-    use crate::{encode_packed, keccak};
+    use crate::abi::{encode_packed, keccak, Token};
+    use crate::abi::types::{Uint, Address };
 
     #[test]
     fn encode_packed_works() {
