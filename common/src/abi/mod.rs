@@ -37,13 +37,12 @@ fn pack(t: &Token) -> Vec<u8> {
             n.to_big_endian(&mut v);
             res.extend(v);
         }
-        Token::Bytes(b) => res.extend(b),
-        _ => panic!("not supported yet"),
+        Token::Bytes(b) | Token::FixedBytes(b) => res.extend(b),
     };
     res
 }
 
-pub fn keccak(x: &[u8]) -> Bytes32 {
+pub fn keccak256(x: &[u8]) -> Bytes32 {
     let mut keccak = Keccak::v256();
     keccak.update(x);
     let mut out = [0u8; 32];
@@ -54,7 +53,8 @@ pub fn keccak(x: &[u8]) -> Bytes32 {
 #[cfg(test)]
 mod tests {
     use crate::abi::types::{Address, Uint};
-    use crate::abi::{encode_packed, keccak, Token};
+    use crate::abi::{encode_packed, keccak256, Token};
+    use hex_literal::hex;
 
     #[test]
     fn encode_packed_works() {
@@ -84,10 +84,32 @@ mod tests {
 
     #[test]
     fn keccak_works() {
-        let bytes = keccak(&vec![1, 2, 3]);
+        let bytes = keccak256(&vec![1, 2, 3]);
         assert_eq!(
             hex::encode(bytes),
             "f1885eda54b7a053318cd41e2093220dab15d65381b1157a3633a83bfd5c9239"
+        );
+    }
+
+    #[test]
+    fn more_complex_test() {
+        let mut bytes32 = vec![0; 32];
+        bytes32[0] = 8;
+        bytes32[1] = 10;
+
+        let mut bytes = vec![0; 36];
+        bytes[0] = 18;
+        bytes[1] = 120;
+
+        let p1 = Token::FixedBytes(bytes32);
+        let p2 = Token::Uint(Uint::from(100));
+        let p3 = Token::Bytes(bytes);
+
+        let (b, _) = encode_packed(&[p1, p2, p3]);
+        assert_eq!(b, hex!("080a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064127800000000000000000000000000000000000000000000000000000000000000000000"));
+        assert_eq!(
+            keccak256(&b),
+            hex!("f3f0d971e5307ceec7ca3d9b762780778c4efe8383f0e17015a2cf8ac8dbc179")
         );
     }
 }
