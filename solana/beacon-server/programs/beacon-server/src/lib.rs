@@ -1,24 +1,35 @@
 mod utils;
 
 use anchor_lang::prelude::*;
+use api3_common::{encode_packed, keccak256, Token, Uint};
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
 #[program]
 pub mod beacon_server {
+    use api3_common::{recover, to_eth_signed_message_hash};
     use super::*;
 
     /// Update a new beacon data point with signed data. The beacon id is used as
     /// the seed to generate pda for the Beacon data account.
+    /// TODO: checkout the official signature verification on solana:
+    /// https://github.com/certusone/wormhole/blob/f60acc59ab5707db905c307aca7eae3ae98b8a3b/solana/bridge/program/src/api/verify_signature.rs#L68
     pub fn update_beacon_with_signed_data(
         ctx: Context<DataPointAccount>,
         datapoint_key: [u8; 32],
-        _template_id: [u8; 32],
-        _timestamp: [u8; 32],
+        template_id: [u8; 32],
+        timestamp: [u8; 32],
         data: Vec<u8>,
-        _signature: Vec<u8>,
+        signature: [u8; 65],
     ) -> Result<()> {
-        // TOOD: perform signature check
+        // perform signature check
+        let (encoded, _) = encode_packed(&[
+            Token::FixedBytes(template_id.to_vec()),
+            Token::Uint(Uint::from(timestamp)),
+            Token::Bytes(data.clone()),
+        ]);
+        let message = to_eth_signed_message_hash(&keccak256(&encoded));
+        let address = recover(&message, &signature)?;
 
         msg!("delete this in actual implementation: {:?}", datapoint_key);
 
