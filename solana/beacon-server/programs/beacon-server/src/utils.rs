@@ -1,7 +1,16 @@
 use crate::WrappedDataPoint;
 use anchor_lang::accounts::account::Account;
 use anchor_lang::prelude::*;
-use api3_common::Bytes32;
+use api3_common::{Bytes, Bytes32, Uint};
+
+pub(crate) fn decode_fulfillment_data(data: Bytes) {
+
+}
+
+pub(crate) fn process_beacon_update(beacon_id: Bytes32, timestamp: Uint, data: Bytes) {
+
+}
+
 
 pub(crate) fn update_beacon_data(
     beacon_account: &mut Account<WrappedDataPoint>,

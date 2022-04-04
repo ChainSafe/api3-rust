@@ -20,20 +20,19 @@ pub mod beacon_server {
         template_id: [u8; 32],
         timestamp: [u8; 32],
         data: Vec<u8>,
-        signature: [u8; 65],
     ) -> Result<()> {
-        // perform signature check
         let (encoded, _) = encode_packed(&[
             Token::FixedBytes(template_id.to_vec()),
             Token::Uint(Uint::from(timestamp)),
             Token::Bytes(data.clone()),
         ]);
-        let message = to_eth_signed_message_hash(&keccak256(&encoded));
-        let address = recover(&message, &signature)?;
+        // let message = to_eth_signed_message_hash(&keccak256(&encoded));
+        // let address = recover(&message, &signature)?;
 
-        msg!("delete this in actual implementation: {:?}", datapoint_key);
+        // msg!("delete this in actual implementation: {:?}", datapoint_key);
 
-        utils::update_beacon_data(&mut ctx.accounts.datapoint, data)?;
+        let a = &mut ctx.accounts.datapoint;
+        a.raw_datapoint = data;
 
         Ok(())
     }
