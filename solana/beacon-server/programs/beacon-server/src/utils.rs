@@ -1,16 +1,29 @@
-use crate::WrappedDataPoint;
+use crate::{WrappedDataPoint};
 use anchor_lang::accounts::account::Account;
 use anchor_lang::prelude::*;
-use api3_common::{Bytes, Bytes32, Uint};
+use api3_common::{
+    decode, ensure, Bytes, Bytes32, DataPoint, DataPointStorage, Int, ParamType, Token, Uint,
+};
 
-pub(crate) fn decode_fulfillment_data(data: Bytes) {
-
+pub(crate) struct SolanaDataPointStorage<'info, 'account> {
+    pub(crate) account: &'account mut Account<'info, WrappedDataPoint>,
 }
 
-pub(crate) fn process_beacon_update(beacon_id: Bytes32, timestamp: Uint, data: Bytes) {
+impl DataPointStorage for SolanaDataPointStorage<'_, '_> {
+    fn get(&self, _key: Bytes32) -> Option<DataPoint> {
+        match DataPoint::from(self.account.raw_datapoint.clone()) {
+            Ok(d) => Some(d),
+            Err(e) => {
+                msg!("cannot load datapoint due to: {:?}", e);
+                None
+            }
+        }
+    }
 
+    fn store(&mut self, _key: Bytes32, datapoint: DataPoint) {
+        self.account.raw_datapoint = Vec::from(datapoint);
+    }
 }
-
 
 pub(crate) fn update_beacon_data(
     beacon_account: &mut Account<WrappedDataPoint>,

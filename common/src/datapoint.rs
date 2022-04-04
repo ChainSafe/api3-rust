@@ -1,17 +1,17 @@
-use crate::{error, U256};
+use crate::{error, Int};
 
 /// The data point struct in the original API3 beacon server contract
 #[derive(Clone)]
 pub struct DataPoint {
-    value: U256,
-    timestamp: u32,
+    pub value: Int,
+    pub timestamp: u32,
 }
 
 impl DataPoint {
     /// Len of the data point as bytes, value is 32 bytes and timestamp is 4 bytes
     const LEN: usize = 36;
 
-    pub fn new(value: U256, timestamp: u32) -> Self {
+    pub fn new(value: Int, timestamp: u32) -> Self {
         Self { value, timestamp }
     }
 
@@ -19,7 +19,7 @@ impl DataPoint {
         if raw.len() != Self::LEN {
             Err(error::Error::CannotDeserializeDataPoint)
         } else {
-            let mut value = U256::from_big_endian(&raw[0..32]);
+            let mut value = Int::from_big_endian(&raw[0..32]);
             Ok(Self {
                 value,
                 timestamp: u32::from_be_bytes([raw[32], raw[33], raw[34], raw[35]]),

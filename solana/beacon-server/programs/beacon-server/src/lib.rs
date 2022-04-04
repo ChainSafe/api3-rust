@@ -1,38 +1,34 @@
 mod utils;
 
 use anchor_lang::prelude::*;
-use api3_common::{encode_packed, keccak256, Token, Uint};
+use api3_common::{derive_beacon_id, encode_packed, keccak256, Token, Uint, ensure, process_beacon_update};
+use crate::utils::SolanaDataPointStorage;
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
 #[program]
 pub mod beacon_server {
-    use api3_common::{recover, to_eth_signed_message_hash};
+
     use super::*;
 
     /// Update a new beacon data point with signed data. The beacon id is used as
     /// the seed to generate pda for the Beacon data account.
-    /// TODO: checkout the official signature verification on solana:
-    /// https://github.com/certusone/wormhole/blob/f60acc59ab5707db905c307aca7eae3ae98b8a3b/solana/bridge/program/src/api/verify_signature.rs#L68
     pub fn update_beacon_with_signed_data(
         ctx: Context<DataPointAccount>,
         datapoint_key: [u8; 32],
+        airnode: Vec<u8>,
         template_id: [u8; 32],
         timestamp: [u8; 32],
         data: Vec<u8>,
     ) -> Result<()> {
-        let (encoded, _) = encode_packed(&[
-            Token::FixedBytes(template_id.to_vec()),
-            Token::Uint(Uint::from(timestamp)),
-            Token::Bytes(data.clone()),
-        ]);
-        // let message = to_eth_signed_message_hash(&keccak256(&encoded));
-        // let address = recover(&message, &signature)?;
-
         // msg!("delete this in actual implementation: {:?}", datapoint_key);
 
-        let a = &mut ctx.accounts.datapoint;
-        a.raw_datapoint = data;
+        let beacon_id = derive_beacon_id(airnode, template_id);
+        ensure!(beacon_id == datapoint_key, Error::from(ProgramError::from(0)))?;
+        let timestamp = Uint::from(&timestamp);
+
+        let mut s = SolanaDataPointStorage { account: &mut ctx.accounts.datapoint };
+        process_beacon_update(&mut s, beacon_id, timestamp, data).unwrap();
 
         Ok(())
     }
@@ -44,7 +40,10 @@ pub mod beacon_server {
         datapoint_key: [u8; 32],
         beacon_ids: Vec<[u8; 32]>,
     ) -> Result<()> {
-        assert!(!ctx.remaining_accounts.is_empty(), "must provide beacon accounts");
+        assert!(
+            !ctx.remaining_accounts.is_empty(),
+            "must provide beacon accounts"
+        );
 
         let beacon_id_tuples = ctx
             .remaining_accounts
@@ -93,7 +92,10 @@ pub mod beacon_server {
         _name: [u8; 32],
         _data_point_id: [u8; 32],
     ) -> Result<()> {
-        msg!("delete this in actual implementation: {:?}", datapoint_id_key);
+        msg!(
+            "delete this in actual implementation: {:?}",
+            datapoint_id_key
+        );
         Ok(())
     }
 

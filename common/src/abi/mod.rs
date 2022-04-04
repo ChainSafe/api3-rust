@@ -8,7 +8,10 @@ pub mod encode;
 mod types;
 
 #[cfg(feature = "eth")]
-pub use ethabi::Token;
+mod adaptor;
+
+#[cfg(feature = "eth")]
+pub use adaptor::{decode, encode, FixedBytes, Int, ParamType, Token, Uint, U256};
 #[cfg(feature = "simple-abi")]
 pub use types::*;
 
@@ -31,13 +34,14 @@ fn pack(t: &Token) -> Vec<u8> {
     let mut res = Vec::new();
     match t {
         Token::String(s) => res.extend(s.as_bytes()),
-        Token::Address(a) => res.extend(a.iter()),
+        Token::Address(a) => res.extend(a.as_bytes()),
         Token::Uint(n) => {
             let mut v = vec![0u8; 32];
             n.to_big_endian(&mut v);
             res.extend(v);
         }
         Token::Bytes(b) | Token::FixedBytes(b) => res.extend(b),
+        _ => {}
     };
     res
 }
@@ -51,13 +55,11 @@ pub fn keccak256(x: &[u8]) -> Bytes32 {
 }
 
 pub fn to_eth_signed_message_hash(s: &[u8]) -> Bytes32 {
-    let (bytes, _) = encode_packed(
-        &[
-            Token::String("\x19Ethereum Signed Message:\n".parse().unwrap()),
-            Token::String(s.len().to_string()),
-            Token::Bytes(s.to_vec())
-            ]
-    );
+    let (bytes, _) = encode_packed(&[
+        Token::String("\x19Ethereum Signed Message:\n".parse().unwrap()),
+        Token::String(s.len().to_string()),
+        Token::Bytes(s.to_vec()),
+    ]);
     keccak256(&bytes)
 }
 
@@ -84,10 +86,10 @@ pub fn recover(message: &Bytes32, signature: &[u8; 65]) -> Result<Address, Error
 
 #[cfg(test)]
 mod tests {
-    use crate::abi::types::{Address, Uint};
     use crate::abi::{encode_packed, keccak256, Token};
-    use hex_literal::hex;
+    use crate::abi::{Address, Uint};
     use crate::to_eth_signed_message_hash;
+    use hex_literal::hex;
 
     #[test]
     fn encode_packed_works() {

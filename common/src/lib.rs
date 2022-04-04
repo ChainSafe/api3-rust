@@ -1,8 +1,8 @@
 mod abi;
+mod beacon;
 mod datapoint;
 mod error;
 mod manager;
-mod beacon;
 
 pub use abi::*;
 pub use beacon::*;
@@ -12,3 +12,14 @@ pub use manager::Manager;
 
 pub type Bytes = Vec<u8>;
 pub type Bytes32 = [u8; 32];
+
+#[macro_export]
+macro_rules! ensure {
+    ( $x:expr, $y:expr ) => {{
+        if !$x {
+            Err($y)
+        } else {
+            Ok(())
+        }
+    }};
+}

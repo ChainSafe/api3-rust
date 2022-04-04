@@ -48,7 +48,7 @@ describe("beacon-server", async () => {
       {
         accounts: {
           datapoint: beaconIdPDA,
-          user: airnode.publicKey,
+          user: airnode.publicKey, // we are asking airnode to fund the storage (can be changed), airnode needs to sign
           systemProgram: anchor.web3.SystemProgram.programId,
         }
       }
@@ -56,7 +56,7 @@ describe("beacon-server", async () => {
 
     const tx = new anchor.web3.Transaction().add(method);
     tx.recentBlockhash = (await program.provider.connection.getLatestBlockhash()).blockhash;
-    tx.feePayer = messageRelayer.publicKey;
+    tx.feePayer = messageRelayer.publicKey;  // we ask another account to fund the actual txn
     const realDataNeedToSign = tx.serializeMessage();
 
     // 2. Sign Transaction
@@ -69,7 +69,7 @@ describe("beacon-server", async () => {
     recoverTx.addSignature(airnode.publicKey, Buffer.from(airnodeSignature));
 
     // 4. Send transaction
-    await provider.connection.sendRawTransaction(recoverTx.serialize());
+    await provider.connection.sendRawTransaction(recoverTx.serialize());  // ask solana to verify the txns
 
     // wait a bit for the transaction to take effect
     await delay(1000);
