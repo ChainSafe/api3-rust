@@ -1,12 +1,17 @@
 mod utils;
 
-use anchor_lang::prelude::*;
-use api3_common::{derive_beacon_id, Uint, ensure, process_beacon_update};
 use crate::utils::SolanaDataPointStorage;
-
-const INVALID_BEACON_ID_KEY: u64 = 1u64;
+use anchor_lang::prelude::*;
+use api3_common::{derive_beacon_id, ensure, process_beacon_update, Uint};
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
+
+// a bunch of error codes
+const ERROR_INVALID_BEACON_ID_KEY: u64 = 1u64;
+
+fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
+    anchor_lang::error::Error::from(ProgramError::Custom(e.into()))
+}
 
 #[program]
 pub mod beacon_server {
@@ -18,17 +23,21 @@ pub mod beacon_server {
     pub fn update_beacon_with_signed_data(
         ctx: Context<DataPointAccount>,
         datapoint_key: [u8; 32],
-        airnode: Vec<u8>,
         template_id: [u8; 32],
         timestamp: [u8; 32],
         data: Vec<u8>,
     ) -> Result<()> {
+        let airnode = ctx.accounts.user.key.to_bytes().to_vec();
         let beacon_id = derive_beacon_id(airnode, template_id);
-        ensure!(beacon_id == datapoint_key, Error::from(ProgramError::from(INVALID_BEACON_ID_KEY)))?;
+        ensure!(
+            beacon_id == datapoint_key,
+            Error::from(ProgramError::from(ERROR_INVALID_BEACON_ID_KEY))
+        )?;
+
         let timestamp = Uint::from(&timestamp);
 
         let mut s = SolanaDataPointStorage { account: &mut ctx.accounts.datapoint };
-        process_beacon_update(&mut s, beacon_id, timestamp, data).unwrap();
+        process_beacon_update(&mut s, beacon_id, timestamp, data).map_err(map_error)?;
 
         Ok(())
     }
@@ -58,7 +67,6 @@ pub mod beacon_server {
 
         let account = &mut ctx.accounts.datapoint;
         account.raw_datapoint = vec![1];
-
         Ok(())
     }
 
@@ -74,8 +82,6 @@ pub mod beacon_server {
         _datas: Vec<Vec<u8>>,
         _signatures: Vec<Vec<u8>>,
     ) -> Result<()> {
-        // TOOD: perform signature check
-
         msg!("delete this in actual implementation: {:?}", datapoint_key);
 
         Ok(())
@@ -153,7 +159,7 @@ pub struct DataPointAccount<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        space = 8 + 37,
+        space = 8 + 41,
         seeds = [b"datapoint", datapoint_key.as_ref()],
         bump
     )]

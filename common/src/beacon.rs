@@ -42,6 +42,7 @@ pub fn process_beacon_update<D: DataPointStorage>(
 
     // Timestamp validity is already checked by `onlyValidTimestamp`, which
     // means it will be small enough to be typecast into `uint32`
+
     let datapoint = DataPoint::new(updated_beacon_value, timestamp.as_u32());
     s.store(beacon_id, datapoint);
 

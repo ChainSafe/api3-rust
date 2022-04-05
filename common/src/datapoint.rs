@@ -36,3 +36,18 @@ impl From<DataPoint> for Vec<u8> {
         v
     }
 }
+
+impl From<DataPoint> for [u8; 36] {
+    fn from(d: DataPoint) -> Self {
+        let mut v = [0u8; DataPoint::LEN];
+        d.value.to_big_endian(&mut v[0..32]);
+        v[32..].copy_from_slice(&d.timestamp.to_be_bytes());
+        v
+    }
+}
+
+impl Default for DataPoint {
+    fn default() -> Self {
+        Self { value: Default::default(), timestamp: 0 }
+    }
+}

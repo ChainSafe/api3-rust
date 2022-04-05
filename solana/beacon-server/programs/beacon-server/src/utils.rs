@@ -1,8 +1,7 @@
-use crate::{WrappedDataPoint};
+use crate::WrappedDataPoint;
 use anchor_lang::accounts::account::Account;
 use anchor_lang::prelude::*;
 use api3_common::{Bytes32, DataPoint, DataPointStorage};
-
 
 pub(crate) struct SolanaDataPointStorage<'info, 'account> {
     pub(crate) account: &'account mut Account<'info, WrappedDataPoint>,
@@ -10,6 +9,9 @@ pub(crate) struct SolanaDataPointStorage<'info, 'account> {
 
 impl DataPointStorage for SolanaDataPointStorage<'_, '_> {
     fn get(&self, _key: Bytes32) -> Option<DataPoint> {
+        if self.account.raw_datapoint.is_empty() {
+            return Some(DataPoint::default());
+        }
         match DataPoint::from(self.account.raw_datapoint.clone()) {
             Ok(d) => Some(d),
             Err(e) => {

@@ -2,10 +2,79 @@ import * as anchor from "@project-serum/anchor";
 import { expect } from "chai";
 import nacl from 'tweetnacl';
 import * as fs from "fs";
+import { deriveBeaconId, encodeData } from "./utils";
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-describe("beacon-server", async () => {
+/**
+ * Create a new offline UpdateBeaconWithSignedData transasction
+ * 
+ * @param beaconID 
+ * @param templateID 
+ * @param timestamp 
+ * @param data 
+ * @param program 
+ * @param beaconIdPDA 
+ * @param storageFunderKey 
+ * @param txnRelayerKey 
+ * @returns The serialized offline transaction buffer
+ */
+async function newUpdateBeaconWithSignedDataTxn(
+  beaconID: Buffer,
+  templateID: Buffer,
+  timestamp: number,
+  data: number,
+  program: anchor.Program,
+  beaconIdPDA: anchor.web3.PublicKey,
+  storageFunder: anchor.web3.Keypair,
+  txnRelayerKey: anchor.web3.PublicKey,
+): Promise<[Uint8Array, Buffer]> {
+  const bufferedTimestamp = Buffer.allocUnsafe(32);
+  bufferedTimestamp.writeBigInt64BE(BigInt(0), 0);
+  bufferedTimestamp.writeBigInt64BE(BigInt(0), 8);
+  bufferedTimestamp.writeBigInt64BE(BigInt(0), 16);
+  bufferedTimestamp.writeBigInt64BE(BigInt(timestamp), 24);
+  
+  const encodedData = encodeData(data);
+
+  const method = program.instruction.updateBeaconWithSignedData(
+    beaconID,
+    templateID,
+    bufferedTimestamp,
+    encodedData,
+    {
+      accounts: {
+        datapoint: beaconIdPDA,
+        user: storageFunder.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      }
+    }
+  );
+  
+  const tx = new anchor.web3.Transaction().add(method);
+  tx.recentBlockhash = (await program.provider.connection.getLatestBlockhash()).blockhash;
+  tx.feePayer = txnRelayerKey;
+
+  const rawTxn = tx.serializeMessage();
+  const signature = nacl.sign.detached(rawTxn, storageFunder.secretKey);
+  return [signature, rawTxn];
+}
+
+async function relayTxn(
+  rawTxn: Buffer,
+  storageSignature: Uint8Array,
+  storageFunderKey: anchor.web3.PublicKey,
+  relayer: anchor.web3.Keypair,
+): Promise<Buffer> {
+  const relayerSignature = nacl.sign.detached(rawTxn, relayer.secretKey);
+  let recoverTx = anchor.web3.Transaction.populate(anchor.web3.Message.from(rawTxn));
+  recoverTx.addSignature(relayer.publicKey, Buffer.from(relayerSignature));
+  recoverTx.addSignature(storageFunderKey, Buffer.from(storageSignature));
+
+  return recoverTx.serialize();
+}
+
+describe("beacon-server", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.Provider.env();
   anchor.setProvider(provider);
@@ -19,8 +88,6 @@ describe("beacon-server", async () => {
   const airnode = anchor.web3.Keypair.generate();
   const messageRelayer = anchor.web3.Keypair.generate();
 
-  const beaconID = Buffer.from("0384392".padEnd(64, "0"), "hex");
-
   before(async () => {
     // fund the accounts one shot
     await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(airnode.publicKey, anchor.web3.LAMPORTS_PER_SOL));
@@ -28,54 +95,54 @@ describe("beacon-server", async () => {
   })
   
   it("updateBeaconWithSignedData", async () => {
+    // 1. Airnode create the txn
     const templateID = Buffer.allocUnsafe(32);
-    const timestamp = Buffer.allocUnsafe(32);
-    const data = Buffer.from(anchor.utils.bytes.utf8.encode("random-test-data"));
+
+    const timestamp = 1649133996;    
+    const data = 123;
+
+    const beaconId = deriveBeaconId(airnode.publicKey.toBytes(), templateID);
+    console.log("raw beaconId with length", beaconId.length, "and value", beaconId.toString("hex"));
 
     const [beaconIdPDA] = await anchor.web3.PublicKey.findProgramAddress(
       [
         Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
-        beaconID
+        beaconId
       ],
       program.programId
     );
 
-    const method = program.instruction.updateBeaconWithSignedData(
-      beaconID,
+    const [airnodeSignature, airnodeTxn] = await newUpdateBeaconWithSignedDataTxn(
+      beaconId,
       templateID,
       timestamp,
       data,
-      {
-        accounts: {
-          datapoint: beaconIdPDA,
-          user: airnode.publicKey, // we are asking airnode to fund the storage (can be changed), airnode needs to sign
-          systemProgram: anchor.web3.SystemProgram.programId,
-        }
-      }
+      program,
+      beaconIdPDA,
+      airnode,
+      messageRelayer.publicKey
     );
+    
+    // 2. Relay the transaction
+    const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode.publicKey, messageRelayer);
 
-    const tx = new anchor.web3.Transaction().add(method);
-    tx.recentBlockhash = (await program.provider.connection.getLatestBlockhash()).blockhash;
-    tx.feePayer = messageRelayer.publicKey;  // we ask another account to fund the actual txn
-    const realDataNeedToSign = tx.serializeMessage();
-
-    // 2. Sign Transaction
-    const feePayerSignature = nacl.sign.detached(realDataNeedToSign, messageRelayer.secretKey);
-    const airnodeSignature = nacl.sign.detached(realDataNeedToSign, airnode.secretKey);
-
-    // 3. Recover transaction
-    let recoverTx = anchor.web3.Transaction.populate(anchor.web3.Message.from(realDataNeedToSign));
-    recoverTx.addSignature(messageRelayer.publicKey, Buffer.from(feePayerSignature));
-    recoverTx.addSignature(airnode.publicKey, Buffer.from(airnodeSignature));
-
-    // 4. Send transaction
-    await provider.connection.sendRawTransaction(recoverTx.serialize());  // ask solana to verify the txns
+    // 3. Send transaction
+    await provider.connection.sendRawTransaction(offlineTxn);
 
     // wait a bit for the transaction to take effect
     await delay(1000);
 
     const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(beaconIdPDA);
-    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
+
+    // construct expected
+    const expected = Buffer.allocUnsafe(36);
+    expected.writeBigInt64BE(BigInt(0), 0);
+    expected.writeBigInt64BE(BigInt(0), 8);
+    expected.writeBigInt64BE(BigInt(0), 16);
+    expected.writeBigInt64BE(BigInt(data), 24);
+    expected.writeUInt32BE(timestamp, 32);
+
+    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(expected);
   });
 
   // it("updateDapiWithBeacons", async () => {
