@@ -19,7 +19,7 @@ impl DataPoint {
         if raw.len() != Self::LEN {
             Err(error::Error::CannotDeserializeDataPoint)
         } else {
-            let mut value = Int::from_big_endian(&raw[0..32]);
+            let value = Int::from_big_endian(&raw[0..32]);
             Ok(Self {
                 value,
                 timestamp: u32::from_be_bytes([raw[32], raw[33], raw[34], raw[35]]),

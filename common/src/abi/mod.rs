@@ -15,7 +15,7 @@ pub use adaptor::{decode, encode, FixedBytes, Int, ParamType, Token, Uint, U256}
 #[cfg(feature = "simple-abi")]
 pub use types::*;
 
-use crate::{Bytes, Bytes32, Error};
+use crate::{Bytes, Bytes32};
 
 /// Rust implementation of solidity abi.encodePacked(...)
 pub fn encode_packed(items: &[Token]) -> (Bytes, String) {

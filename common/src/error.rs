@@ -7,6 +7,7 @@ pub enum Error {
     BeaconDataNotFound,
     FulfillmentOlderThanBeacon,
     InvalidName(String),
+
     #[cfg(feature = "recovery")]
     Libsecp256k1Error(libsecp256k1::Error),
 

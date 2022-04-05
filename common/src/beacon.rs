@@ -38,7 +38,7 @@ pub fn process_beacon_update<D: DataPointStorage>(
     ensure!(
         timestamp.as_u32() > beacon.timestamp,
         Error::FulfillmentOlderThanBeacon
-    );
+    )?;
 
     // Timestamp validity is already checked by `onlyValidTimestamp`, which
     // means it will be small enough to be typecast into `uint32`

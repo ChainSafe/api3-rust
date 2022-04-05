@@ -1,8 +1,10 @@
 mod utils;
 
 use anchor_lang::prelude::*;
-use api3_common::{derive_beacon_id, encode_packed, keccak256, Token, Uint, ensure, process_beacon_update};
+use api3_common::{derive_beacon_id, Uint, ensure, process_beacon_update};
 use crate::utils::SolanaDataPointStorage;
+
+const INVALID_BEACON_ID_KEY: u64 = 1u64;
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
@@ -21,10 +23,8 @@ pub mod beacon_server {
         timestamp: [u8; 32],
         data: Vec<u8>,
     ) -> Result<()> {
-        // msg!("delete this in actual implementation: {:?}", datapoint_key);
-
         let beacon_id = derive_beacon_id(airnode, template_id);
-        ensure!(beacon_id == datapoint_key, Error::from(ProgramError::from(0)))?;
+        ensure!(beacon_id == datapoint_key, Error::from(ProgramError::from(INVALID_BEACON_ID_KEY)))?;
         let timestamp = Uint::from(&timestamp);
 
         let mut s = SolanaDataPointStorage { account: &mut ctx.accounts.datapoint };
