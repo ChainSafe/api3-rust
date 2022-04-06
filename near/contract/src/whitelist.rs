@@ -19,6 +19,7 @@ use std::io;
 
 use api3_common::types::Address;
 use api3_common::types::U256;
+use api3_common::Bytes32;
 
 near_sdk::setup_alloc!();
 
@@ -41,9 +42,9 @@ struct WhitelistStatus {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 struct Whitelist {
-    service_id_to_user_to_whitelist_status: LookupMap<String, LookupMap<Address, WhitelistStatus>>,
+    service_id_to_user_to_whitelist_status: LookupMap<Bytes32, LookupMap<Address, WhitelistStatus>>,
     service_id_to_user_to_setter_to_indefinite_whitelist_status:
-        LookupMap<String, LookupMap<Address, LookupMap<Address, bool>>>,
+        LookupMap<Bytes32, LookupMap<Address, LookupMap<Address, bool>>>,
 }
 
 #[near_bindgen]
@@ -65,13 +66,13 @@ impl Whitelist {
     /// will expire
     pub fn extend_whitelist_expiration(
         &mut self,
-        service_id: String,
-        user: Address,
+        service_id: &Bytes32,
+        user: &Address,
         expiration_timestamp: u64,
     ) {
         let mut user_to_whitelist_status = self
             .service_id_to_user_to_whitelist_status
-            .remove(&service_id)
+            .remove(service_id)
             .expect("must contain this service");
         let mut whitelist_status = user_to_whitelist_status
             .remove(&user)
@@ -84,10 +85,10 @@ impl Whitelist {
 
         whitelist_status.expiration_timestamp = expiration_timestamp;
 
-        user_to_whitelist_status.insert(&user, &whitelist_status);
+        user_to_whitelist_status.insert(user, &whitelist_status);
 
         self.service_id_to_user_to_whitelist_status
-            .insert(&service_id, &user_to_whitelist_status);
+            .insert(service_id, &user_to_whitelist_status);
     }
 
     /// @notice Sets the expiration of the temporary whitelist of the user for
@@ -99,7 +100,7 @@ impl Whitelist {
     /// will expire
     pub fn set_whitelist_expiration(
         &mut self,
-        service_id: &String,
+        service_id: &Bytes32,
         user: &Address,
         expiration_timestamp: u64,
     ) {
@@ -137,7 +138,7 @@ impl Whitelist {
     /// @param status Indefinite whitelist status
     pub fn set_indefinite_whitelist_status(
         &mut self,
-        service_id: &String,
+        service_id: &Bytes32,
         user: &Address,
         status: bool,
     ) -> U256 {
@@ -163,7 +164,7 @@ impl Whitelist {
     /// @param setter Setter of the indefinite whitelist status
     fn revoke_indefinite_whitelist_status(
         &mut self,
-        service_id: &String,
+        service_id: &Bytes32,
         user: &Address,
         setter: &Address,
     ) -> (bool, U256) {
@@ -208,7 +209,7 @@ impl Whitelist {
     /// @param serviceId Service ID
     /// @param user User address
     /// @return isWhitelisted If the user is whitelisted
-    pub fn user_is_whitelisted(&self, service_id: &String, user: &Address) -> bool {
+    pub fn user_is_whitelisted(&self, service_id: &Bytes32, user: &Address) -> bool {
         if let Some(user_to_whitelist_status) =
             self.service_id_to_user_to_whitelist_status.get(service_id)
         {
@@ -224,7 +225,7 @@ impl Whitelist {
     }
 
     /// ensure that the service_id is in the lookup map
-    fn ensure_service_exist(&mut self, service_id: &String) {
+    fn ensure_service_exist(&mut self, service_id: &Bytes32) {
         if !self
             .service_id_to_user_to_whitelist_status
             .contains_key(service_id)
@@ -276,7 +277,7 @@ mod tests {
         testing_env!(context.build());
         let whitelist = Whitelist::new();
         let user = Address::from([0; 20]);
-        let service = "service1".to_string();
+        let service = [0; 32];
         assert!(!whitelist.user_is_whitelisted(&service, &user));
     }
 
@@ -288,7 +289,7 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         let user = Address::from([0; 20]);
-        let service = "service1".to_string();
+        let service = [0; 32];
 
         assert!(!whitelist.user_is_whitelisted(&service, &user));
 
@@ -305,7 +306,7 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         let user = Address::from([0; 20]);
-        let service = "service1".to_string();
+        let service = [0; 32];
 
         // whitelisted user
         whitelist.set_whitelist_expiration(&service, &user, 10_000);
