@@ -1,9 +1,23 @@
 use borsh::{self, BorshDeserialize, BorshSerialize};
-use derive_more::{Add, Display, From, Into};
+use derive_more::{Add, AddAssign, Display, From, Into, Sub, SubAssign};
 use serde::{Deserialize, Serialize};
 use std::io;
 
-#[derive(Debug, PartialEq, PartialOrd, Default, From, Into, Add, Display)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    PartialOrd,
+    Default,
+    From,
+    Into,
+    Display,
+    Add,
+    AddAssign,
+    Sub,
+    SubAssign,
+)]
 pub struct U256(ethereum_types::U256);
 
 impl BorshDeserialize for U256 {
