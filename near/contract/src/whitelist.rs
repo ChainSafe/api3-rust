@@ -17,8 +17,8 @@ use near_sdk::BorshStorageKey;
 use near_sdk::{env, near_bindgen};
 use std::io;
 
-use crate::types::Address;
-use crate::types::U256;
+use api3_common::types::Address;
+use api3_common::types::U256;
 
 near_sdk::setup_alloc!();
 
@@ -98,29 +98,80 @@ impl Contract {
         if let Some(user_to_whitelist_status) =
             self.service_id_to_user_to_whitelist_status.get(service_id)
         {
-            user_to_whitelist_status.contains_key(user)
+            if let Some(whitelist_status) = user_to_whitelist_status.get(user) {
+                whitelist_status.indefinite_whitelist_count > U256::from(0)
+                    || whitelist_status.expiration_timestamp > env::block_timestamp()
+            } else {
+                false
+            }
         } else {
             false
         }
     }
 
-    pub fn whitelist_user(&mut self, service_id: &String, user: &Address) {
-        if let Some(mut user_to_whitelist_status) = self
+    /// @notice Sets the expiration of the temporary whitelist of the user for
+    /// the service
+    /// @dev Unlike `extendWhitelistExpiration()`, this can hasten expiration
+    /// @param serviceId Service ID
+    /// @param user User address
+    /// @param expirationTimestamp Timestamp at which the temporary whitelist
+    /// will expire
+    pub fn set_whitelist_expiration(
+        &mut self,
+        service_id: &String,
+        user: &Address,
+        expiration_timestamp: u64,
+    ) {
+        self.ensure_service_exist(service_id);
+        let mut user_to_whitelist_status = self
             .service_id_to_user_to_whitelist_status
             .remove(service_id)
-        {
-            user_to_whitelist_status.insert(user, &WhitelistStatus::default());
+            .expect("must have the service");
 
-            self.service_id_to_user_to_whitelist_status
-                .insert(service_id, &user_to_whitelist_status);
+        if let Some(mut whitelist_status) = user_to_whitelist_status.remove(&user) {
+            whitelist_status.expiration_timestamp = expiration_timestamp;
+
+            user_to_whitelist_status.insert(&user, &whitelist_status);
         } else {
-            // create the service lookup first, and then add the user to the whitelist
+            user_to_whitelist_status.insert(
+                &user,
+                &WhitelistStatus {
+                    expiration_timestamp,
+                    ..Default::default()
+                },
+            );
+        }
+        self.service_id_to_user_to_whitelist_status
+            .insert(&service_id, &user_to_whitelist_status);
+    }
+
+    /// @notice Sets the indefinite whitelist status of the user for the
+    /// service
+    /// @dev As long as at least there is at least one account that has set the
+    /// indefinite whitelist status of the user for the service as true, the
+    /// user will be considered whitelisted
+    /// @param serviceId Service ID
+    /// @param user User address
+    /// @param status Indefinite whitelist status
+    pub fn set_indefinite_whitelist_status(
+        &mut self,
+        service_id: &String,
+        user: &Address,
+        status: bool,
+    ) -> U256 {
+        U256::from(0)
+    }
+
+    fn ensure_service_exist(&mut self, service_id: &String) {
+        if !self
+            .service_id_to_user_to_whitelist_status
+            .contains_key(service_id)
+        {
             self.add_service(service_id);
-            self.whitelist_user(service_id, user);
         }
     }
 
-    pub fn add_service(&mut self, service_id: &String) {
+    fn add_service(&mut self, service_id: &String) {
         assert!(
             !self
                 .service_id_to_user_to_whitelist_status
@@ -180,7 +231,7 @@ mod tests {
         assert!(!contract.user_is_whitelisted(&service, &user));
 
         // whitelist the user
-        contract.whitelist_user(&service, &user);
+        contract.set_whitelist_expiration(&service, &user, 10_000);
         assert!(contract.user_is_whitelisted(&service, &user));
     }
 
@@ -195,7 +246,7 @@ mod tests {
         let service = "service1".to_string();
 
         // whitelisted user
-        contract.whitelist_user(&service, &user);
+        contract.set_whitelist_expiration(&service, &user, 10_000);
 
         let mut buffer: Vec<u8> = vec![];
         contract.serialize(&mut buffer).unwrap();
