@@ -8,6 +8,10 @@ declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
 // a bunch of error codes
 const ERROR_INVALID_BEACON_ID_KEY: u64 = 1u64;
+const ERROR_INVALID_SYSVAR_INSTRUCTIONS_KEY: u64 = 2u64;
+const ERROR_SIGNATURES_NOT_VALIDATED: u64 = 3u64;
+const ERROR_SIGNATURES_MORE_THAN_DATA: u64 = 4u64;
+const ERROR_NOT_ENOUGH_ACCOUNT: u64 = 5u64;
 
 fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
     anchor_lang::error::Error::from(ProgramError::Custom(e.into()))
@@ -86,6 +90,28 @@ pub mod beacon_server {
     ) -> Result<()> {
         msg!("delete this in actual implementation: {:?}", datapoint_key);
 
+        let mut remain_accounts = &mut ctx.remaining_accounts.into_iter();
+        let instruction_acc = remain_accounts
+            .next()
+            .ok_or(
+                Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT))
+            )?;
+        ensure!(
+            *instruction_acc.key == anchor_lang::solana_program::sysvar::instructions::id(),
+            Error::from(ProgramError::from(ERROR_INVALID_SYSVAR_INSTRUCTIONS_KEY))
+        )?;
+
+        let r = anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked(0, instruction_acc)?;
+        ensure!(
+            r.program_id == anchor_lang::solana_program::ed25519_program::id(),
+            Error::from(ProgramError::from(ERROR_SIGNATURES_NOT_VALIDATED))
+        )?;
+
+        let sig_count = r.data[0] as usize;
+        ensure!(
+            sig_count <= data.len(),
+            Error::from(ProgramError::from(ERROR_SIGNATURES_MORE_THAN_DATA))
+        )?;
         Ok(())
     }
 
