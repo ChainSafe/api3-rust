@@ -1,21 +1,21 @@
-/// derived from Whitelist.sol
-///
-/// @title Contract that implements temporary and permanent whitelists for
-/// multiple services identified with a hash
-/// @notice This contract implements two kinds of whitelisting:
-///   (1) Temporary, ends when the expiration timestamp is in the past
-///   (2) Indefinite, ends when the indefinite whitelist count is zero
-/// Multiple senders can indefinitely whitelist/unwhitelist independently. The
-/// user will be considered whitelisted as long as there is at least one active
-/// indefinite whitelisting.
-/// @dev The interface of this contract is not implemented. It should be
-/// inherited and its functions should be exposed with a sort of an
-/// authorization scheme.
+#![allow(unused)]
+//! derived from Whitelist.sol
+//!
+//! @title Contract that implements temporary and permanent whitelists for
+//! multiple services identified with a hash
+//! @notice This contract implements two kinds of whitelisting:
+//!   (1) Temporary, ends when the expiration timestamp is in the past
+//!   (2) Indefinite, ends when the indefinite whitelist count is zero
+//! Multiple senders can indefinitely whitelist/unwhitelist independently. The
+//! user will be considered whitelisted as long as there is at least one active
+//! indefinite whitelisting.
+//! @dev The interface of this contract is not implemented. It should be
+//! inherited and its functions should be exposed with a sort of an
+//! authorization scheme.
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::BorshStorageKey;
 use near_sdk::{env, near_bindgen};
-use std::io;
 
 use api3_common::types::Address;
 use api3_common::types::U256;
@@ -75,7 +75,7 @@ impl Whitelist {
             .remove(service_id)
             .expect("must contain this service");
         let mut whitelist_status = user_to_whitelist_status
-            .remove(&user)
+            .remove(user)
             .expect("must contain this user");
 
         assert!(
@@ -111,13 +111,13 @@ impl Whitelist {
             .expect("must have the service");
 
         // user has an existing whitelist expiration
-        if let Some(mut whitelist_status) = user_to_whitelist_status.remove(&user) {
+        if let Some(mut whitelist_status) = user_to_whitelist_status.remove(user) {
             whitelist_status.expiration_timestamp = expiration_timestamp;
-            user_to_whitelist_status.insert(&user, &whitelist_status);
+            user_to_whitelist_status.insert(user, &whitelist_status);
         } else {
             // insert a new entry for non existing user
             user_to_whitelist_status.insert(
-                &user,
+                user,
                 &WhitelistStatus {
                     expiration_timestamp,
                     ..Default::default()
@@ -125,7 +125,7 @@ impl Whitelist {
             );
         }
         self.service_id_to_user_to_whitelist_status
-            .insert(&service_id, &user_to_whitelist_status);
+            .insert(service_id, &user_to_whitelist_status);
     }
 
     /// @notice Sets the indefinite whitelist status of the user for the
@@ -178,8 +178,8 @@ impl Whitelist {
         let mut indefinite_whitelist_count = U256::from(0);
 
         if let Some(mut whitelist_status) = user_to_whitelist_status.remove(user) {
+            whitelist_status.indefinite_whitelist_count -= U256::from(1);
             indefinite_whitelist_count = whitelist_status.indefinite_whitelist_count;
-            indefinite_whitelist_count -= U256::from(1);
             user_to_whitelist_status.insert(user, &whitelist_status);
         }
 

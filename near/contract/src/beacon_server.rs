@@ -1,3 +1,25 @@
+#![allow(unused)]
+
+//! @title Contract that serves Beacons and dAPIs based on the Airnode protocol
+//! @notice A Beacon is a live data point addressed by an ID, which is derived
+//! from an Airnode address and a template ID. This is suitable where the more
+//! recent data point is always more favorable, e.g., in the context of an
+//! asset price data feed. Beacons can also be seen as one-Airnode data feeds
+//! that can be used individually or combined to build dAPIs.
+//! @dev DapiServer is a PSP requester contract. Unlike RRP, which is
+//! implemented as a central contract, PSP implementation is built into the
+//! requester for optimization. Accordingly, the checks that are not required
+//! are omitted. Some examples:
+//! - While executing a PSP beacon update, the condition is not verified
+//! because beacon updates where the condition returns `false` (i.e., the
+//! on-chain value is already close to the actual value) are not harmful, and
+//! are even desirable.
+//! - PSP dAPI update subscription IDs are not verified, as the Airnode/relayer
+//! cannot be made to "misreport a dAPI update" by spoofing a subscription ID.
+//! - While executing a PSP dAPI update, even the signature is not checked
+//! because this is a purely keeper job that does not require off-chain data.
+//! Similar to beacon updates, any dAPI update is welcome.
+
 use api3_common::{derive_beacon_id, Address, Bytes, Bytes32, U256};
 
 /// @notice Updates a Beacon using data signed by the respective Airnode,
