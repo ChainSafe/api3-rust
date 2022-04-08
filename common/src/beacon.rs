@@ -6,7 +6,7 @@ const FIFTEEN_MINUTES_SEC: u32 = 900000;
 /// Generic storage trait. Used for the common processing logic so that each chain could
 /// have their own implementation.
 pub trait DataPointStorage {
-    fn get(&self, key: Bytes32) -> Option<DataPoint>;
+    fn get(&self, key: &Bytes32) -> Option<DataPoint>;
     fn store(&mut self, key: Bytes32, datapoint: DataPoint);
 }
 
@@ -27,7 +27,7 @@ pub trait TimestampChecker {
 }
 
 pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: TimestampChecker>(
-    d: &D,
+    d: &mut D,
     s: &S,
     t: &T,
     airnodes: Vec<&[u8]>,
@@ -54,7 +54,6 @@ pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: 
 
     for ind in 0..beacon_count {
         if !s.is_empty(ind) {
-            let airnode = airnodes[ind];
             let timestamp = U256::from(&timestamps[ind]);
             let timestamp_u32 = timestamp.as_u32();
             ensure!(t.is_valid(timestamp_u32), Error::InvalidTimestamp)?;
@@ -66,7 +65,7 @@ pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: 
             ]);
             let message = to_eth_signed_message_hash(&keccak256(&encoded));
             ensure!(
-                s.verify(airnodes[ind], message, signatures[ind]),
+                s.verify(airnodes[ind], &message, signatures[ind]),
                 Error::InvalidSignature
             )?;
 
@@ -79,14 +78,24 @@ pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: 
         } else {
             let beacon_id = derive_beacon_id(
                 airnodes[ind].clone().to_vec(),
-                templateIds[ind]
+                template_ids[ind]
             );
-            let data_point = d.get(beacon_id).ok_or(Error::BeaconDataNotFound)?;
+            let data_point = d.get(&beacon_id).ok_or(Error::BeaconDataNotFound)?;
             values[ind] = data_point.value.clone();
             accumulated_timestamp += U256::from(data_point.timestamp);
             beacon_ids[ind] = beacon_id;
         }
     }
+    let dapi_id = derive_dapi_id(&beacon_ids);
+    let updated_timestamp = (accumulated_timestamp / beacon_count).as_u32();
+    let dapi_datapoint = d.get(&dapi_id).ok_or(Error::BeaconDataNotFound)?;
+    ensure!(
+        updated_timestamp >= dapi_datapoint.timestamp,
+        Error::UpdatedValueOutdated
+    )?;
+    let updated_value = median(&values);
+    let datapoint = DataPoint::new(updated_value, updated_timestamp);
+    d.store(dapi_id, datapoint);
     Ok(())
 }
 
@@ -95,6 +104,16 @@ pub fn derive_beacon_id(airnode: Bytes, template_id: Bytes32) -> Bytes32 {
         Token::Bytes(airnode),
         Token::FixedBytes(template_id.to_vec()),
     ]);
+    keccak256(&encoded)
+}
+
+/// @notice Derives the dAPI ID from the beacon IDs
+/// @dev Notice that `abi.encode()` is used over `abi.encodePacked()`
+/// @param beaconIds Beacon IDs
+/// @return dapiId dAPI ID
+fn derive_dapi_id(beacon_ids: &Vec<Bytes32>) -> Bytes32 {
+    let tokens: Vec<Token> = beacon_ids.iter().map(|b| Token::FixedBytes(b.to_vec())).collect();
+    let encoded = encode(&tokens);
     keccak256(&encoded)
 }
 
@@ -117,9 +136,9 @@ pub fn process_beacon_update<D: DataPointStorage>(
     timestamp: Uint,
     data: Bytes,
 ) -> Result<(), Error> {
-    let updated_beacon_value = decode_fulfillment_data(data)?;
+    let updated_beacon_value = decode_fulfillment_data(&data)?;
 
-    let beacon = s.get(beacon_id).ok_or(Error::BeaconDataNotFound)?;
+    let beacon = s.get(&beacon_id).ok_or(Error::BeaconDataNotFound)?;
     ensure!(
         timestamp.as_u32() > beacon.timestamp,
         Error::FulfillmentOlderThanBeacon

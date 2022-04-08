@@ -19,8 +19,8 @@ fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
 
 #[program]
 pub mod beacon_server {
-
     use super::*;
+    use crate::utils::SolanaHashMap;
 
     /// Update a new beacon data point with signed data. The beacon id is used as
     /// the seed to generate pda for the Beacon data account.
@@ -40,9 +40,7 @@ pub mod beacon_server {
 
         let timestamp = Uint::from(&timestamp);
 
-        let mut s = SolanaDataPointStorage {
-            account: &mut ctx.accounts.datapoint,
-        };
+        let mut s = SolanaHashMap::new(vec![(beacon_id.clone(), &mut ctx.accounts.datapoint)]);
         process_beacon_update(&mut s, beacon_id, timestamp, data).map_err(map_error)?;
 
         Ok(())
@@ -89,12 +87,11 @@ pub mod beacon_server {
     ) -> Result<()> {
         msg!("delete this in actual implementation: {:?}", datapoint_key);
 
-        let instruction_acc = &mut ctx.remaining_accounts
+        let instruction_acc = &mut ctx
+            .remaining_accounts
             .into_iter()
             .next()
-            .ok_or(
-                Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT))
-            )?;
+            .ok_or(Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT)))?;
         let sig_count = ensure_batch_signed(instruction_acc, &data)?;
 
         Ok(())
@@ -196,21 +193,24 @@ pub struct WrappedDataPointId {
 
 fn ensure_batch_signed(instruction_acc: &AccountInfo, data: &Vec<[u8; 32]>) -> Result<usize> {
     ensure!(
-            *instruction_acc.key == anchor_lang::solana_program::sysvar::instructions::id(),
-            Error::from(ProgramError::from(ERROR_INVALID_SYSVAR_INSTRUCTIONS_KEY))
-        )?;
+        *instruction_acc.key == anchor_lang::solana_program::sysvar::instructions::id(),
+        Error::from(ProgramError::from(ERROR_INVALID_SYSVAR_INSTRUCTIONS_KEY))
+    )?;
 
-    let r = anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked(0, instruction_acc)?;
+    let r = anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked(
+        0,
+        instruction_acc,
+    )?;
     ensure!(
-            r.program_id == anchor_lang::solana_program::ed25519_program::id(),
-            Error::from(ProgramError::from(ERROR_SIGNATURES_NOT_VALIDATED))
-        )?;
+        r.program_id == anchor_lang::solana_program::ed25519_program::id(),
+        Error::from(ProgramError::from(ERROR_SIGNATURES_NOT_VALIDATED))
+    )?;
 
     let sig_count = r.data[0] as usize;
     ensure!(
-            sig_count <= data.len(),
-            Error::from(ProgramError::from(ERROR_SIGNATURES_MORE_THAN_DATA))
-        )?;
+        sig_count <= data.len(),
+        Error::from(ProgramError::from(ERROR_SIGNATURES_MORE_THAN_DATA))
+    )?;
 
     Ok(sig_count)
 }

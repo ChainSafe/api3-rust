@@ -14,6 +14,7 @@ pub enum Error {
     LessThanTwoBeacons,
     InvalidTimestamp,
     InvalidSignature,
+    UpdatedValueOutdated,
 }
 
 #[cfg(feature = "recovery")]
@@ -40,6 +41,7 @@ impl From<Error> for u32 {
             Error::LessThanTwoBeacons => 10,
             Error::InvalidTimestamp => 11,
             Error::InvalidSignature => 12,
+            Error::UpdatedValueOutdated => 13,
         }
     }
 }
