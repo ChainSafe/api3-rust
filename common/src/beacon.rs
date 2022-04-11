@@ -12,7 +12,13 @@ pub trait DataPointStorage {
 
 /// Public trait that handles signature verification across different chains
 pub trait SignatureManger {
+    /// Checks if the signature passed from client is actually empty
+    /// * `index` - The index of the signature to check if it is empty
     fn is_empty(&self, index: usize) -> bool;
+    /// Verifies the signature against the message and public key
+    /// * `key` - The public key of the signer
+    /// * `message` - The message to verify
+    /// * `signature` - The signature to verify
     fn verify(&self, key: &[u8], message: &[u8], signature: &[u8]) -> bool;
 }
 
@@ -26,15 +32,16 @@ pub trait TimestampChecker {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: TimestampChecker>(
     d: &mut D,
     s: &S,
     t: &T,
-    airnodes: Vec<&[u8]>,
+    airnodes: Vec<Bytes>,
     template_ids: Vec<[u8; 32]>,
     timestamps: Vec<[u8; 32]>,
     data: Vec<Bytes>,
-    signatures: Vec<&[u8]>,
+    signatures: Vec<Bytes>,
 ) -> Result<(), Error>{
     let beacon_count = template_ids.len();
 
@@ -65,25 +72,26 @@ pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: 
             ]);
             let message = to_eth_signed_message_hash(&keccak256(&encoded));
             ensure!(
-                s.verify(airnodes[ind], &message, signatures[ind]),
+                s.verify(&airnodes[ind], &message, &signatures[ind]),
                 Error::InvalidSignature
             )?;
 
-            values[ind] = decode_fulfillment_data(&data[ind])?;
+            values.push(decode_fulfillment_data(&data[ind])?);
 
             // Timestamp validity is already checked, which means it will
             // be small enough to be typecast into `uint32`
             accumulated_timestamp += timestamp;
-            beacon_ids[ind] = derive_beacon_id(airnodes[ind].clone().to_vec(), template_ids[ind]);
+            beacon_ids.push(derive_beacon_id(airnodes[ind].clone().to_vec(), template_ids[ind]));
         } else {
             let beacon_id = derive_beacon_id(
-                airnodes[ind].clone().to_vec(),
+                airnodes[ind].clone(),
                 template_ids[ind]
             );
+            panic!("{:?}, {:?}, {:?}, {:?}", hex::encode(beacon_id), hex::encode(airnodes[2].clone()), template_ids[2].clone(), ind);
             let data_point = d.get(&beacon_id).ok_or(Error::BeaconDataNotFound)?;
-            values[ind] = data_point.value.clone();
+            values.push(data_point.value);
             accumulated_timestamp += U256::from(data_point.timestamp);
-            beacon_ids[ind] = beacon_id;
+            beacon_ids.push(beacon_id);
         }
     }
     let dapi_id = derive_dapi_id(&beacon_ids);
@@ -111,7 +119,7 @@ pub fn derive_beacon_id(airnode: Bytes, template_id: Bytes32) -> Bytes32 {
 /// @dev Notice that `abi.encode()` is used over `abi.encodePacked()`
 /// @param beaconIds Beacon IDs
 /// @return dapiId dAPI ID
-fn derive_dapi_id(beacon_ids: &Vec<Bytes32>) -> Bytes32 {
+fn derive_dapi_id(beacon_ids: &[Bytes32]) -> Bytes32 {
     let tokens: Vec<Token> = beacon_ids.iter().map(|b| Token::FixedBytes(b.to_vec())).collect();
     let encoded = encode(&tokens);
     keccak256(&encoded)
