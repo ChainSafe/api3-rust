@@ -1,6 +1,6 @@
 use crate::Int;
 
-/// sort an array of U256
+/// sort an array of Int
 pub fn sort(array: &[Int]) -> Vec<Int> {
     let mut array = array.to_vec();
     array.sort();
@@ -9,39 +9,31 @@ pub fn sort(array: &[Int]) -> Vec<Int> {
 
 #[test]
 fn already_sorted() {
-    let numbers = vec![U256::from(1_i128), U256::from(2_i128), U256::from(3_i128)];
+    let numbers = vec![Int::from(1_u128), Int::from(2_u128), Int::from(3_u128)];
     let result = sort(&numbers);
     assert_eq!(result, numbers);
 }
 
 #[test]
 fn unsorted() {
-    let numbers = vec![U256::from(2_i128), U256::from(1_i128), U256::from(3_i128)];
+    let numbers = vec![Int::from(2_u128), Int::from(1_u128), Int::from(3_u128)];
     let result = sort(&numbers);
-    let expected = vec![U256::from(1_i128), U256::from(2i128), U256::from(3_i128)];
+    let expected = vec![Int::from(1_u128), Int::from(2u128), Int::from(3_u128)];
     assert_eq!(result, expected);
 }
 
 #[test]
 fn large_numbers() {
     let numbers = vec![
-        U256::from(212837128371931812_u128),
-        U256::from(u128::MAX),
-        U256::from(51623219381273_u128),
+        Int::from(212837128371931812_u128),
+        Int::from(u128::MAX),
+        Int::from(51623219381273_u128),
     ];
     let result = sort(&numbers);
     let expected = vec![
-        U256::from(51623219381273_u128),
-        U256::from(212837128371931812_u128),
-        U256::from(u128::MAX),
+        Int::from(51623219381273_u128),
+        Int::from(212837128371931812_u128),
+        Int::from(u128::MAX),
     ];
-    assert_eq!(result, expected);
-}
-
-#[test]
-fn max_numbers() {
-    let numbers = vec![U256::MAX, U256::from([u8::MAX; 32])];
-    let result = sort(&numbers);
-    let expected = vec![U256::from([u8::MAX; 32]), U256::MAX];
     assert_eq!(result, expected);
 }

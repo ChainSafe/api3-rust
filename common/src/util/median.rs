@@ -1,7 +1,7 @@
 use super::sort;
 use crate::Int;
 
-/// get the median from an array of U256
+/// get the median from an array of Int
 pub fn median(array: &[Int]) -> Int {
     let len = array.len();
     let array = sort(array);
@@ -15,19 +15,19 @@ pub fn median(array: &[Int]) -> Int {
 
 #[test]
 fn ideal_median() {
-    let numbers = vec![U256::from(1_i128), U256::from(2_i128), U256::from(3_i128)];
+    let numbers = vec![Int::from(1_u128), Int::from(2_u128), Int::from(3_u128)];
     let result = median(&numbers);
-    assert_eq!(result, U256::from(2_i128));
+    assert_eq!(result, Int::from(2_u128));
 }
 
 #[test]
 fn even_length() {
     let numbers = vec![
-        U256::from(2_u128),
-        U256::from(3_u128),
-        U256::from(5_u128),
-        U256::from(9_u128),
+        Int::from(2_u128),
+        Int::from(3_u128),
+        Int::from(5_u128),
+        Int::from(9_u128),
     ];
     let result = median(&numbers);
-    assert_eq!(result, U256::from(4_i128));
+    assert_eq!(result, Int::from(4_u128));
 }
