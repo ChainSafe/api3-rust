@@ -1,7 +1,8 @@
 use crate::{error, Int};
+use borsh::{self, BorshDeserialize, BorshSerialize};
 
 /// The data point struct in the original API3 beacon server contract
-#[derive(Clone, Default)]
+#[derive(Clone, Default, BorshDeserialize, BorshSerialize)]
 pub struct DataPoint {
     pub value: Int,
     pub timestamp: u32,

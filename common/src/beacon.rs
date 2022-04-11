@@ -21,12 +21,19 @@ pub trait TimestampChecker {
     fn current_timestamp(&self) -> u32;
     fn is_valid(&self, timestamp: u32) -> bool {
         let c = self.current_timestamp();
-        timestamp.checked_add(ONE_HOUR_SEC).expect("Invalid timestamp") > c
+        timestamp
+            .checked_add(ONE_HOUR_SEC)
+            .expect("Invalid timestamp")
+            > c
             && timestamp < c + FIFTEEN_MINUTES_SEC
     }
 }
 
-pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: TimestampChecker>(
+pub fn update_dapi_with_signed_data<
+    D: DataPointStorage,
+    S: SignatureManger,
+    T: TimestampChecker,
+>(
     d: &mut D,
     s: &S,
     t: &T,
@@ -35,21 +42,21 @@ pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: 
     timestamps: Vec<[u8; 32]>,
     data: Vec<Bytes>,
     signatures: Vec<&[u8]>,
-) -> Result<(), Error>{
+) -> Result<(), Error> {
     let beacon_count = template_ids.len();
 
     ensure!(
-        beacon_count == template_ids.len() &&
-        beacon_count == timestamps.len() &&
-        beacon_count == data.len() &&
-        beacon_count == signatures.len(),
+        beacon_count == template_ids.len()
+            && beacon_count == timestamps.len()
+            && beacon_count == data.len()
+            && beacon_count == signatures.len(),
         Error::ParameterLengthMismatch
     )?;
 
     ensure!(beacon_count > 1, Error::LessThanTwoBeacons)?;
 
     let mut beacon_ids = Vec::with_capacity(beacon_count);
-    let mut values = Vec::with_capacity(beacon_count);
+    let mut values: Vec<Int> = Vec::with_capacity(beacon_count);
     let mut accumulated_timestamp = U256::from(0);
 
     for ind in 0..beacon_count {
@@ -61,7 +68,7 @@ pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: 
             let (encoded, _) = encode_packed(&[
                 Token::FixedBytes(template_ids[ind].clone().to_vec()),
                 Token::Uint(timestamp),
-                Token::Bytes(data[ind].clone())
+                Token::Bytes(data[ind].clone()),
             ]);
             let message = to_eth_signed_message_hash(&keccak256(&encoded));
             ensure!(
@@ -76,12 +83,9 @@ pub fn update_dapi_with_signed_data<D: DataPointStorage, S: SignatureManger, T: 
             accumulated_timestamp += timestamp;
             beacon_ids[ind] = derive_beacon_id(airnodes[ind].clone().to_vec(), template_ids[ind]);
         } else {
-            let beacon_id = derive_beacon_id(
-                airnodes[ind].clone().to_vec(),
-                template_ids[ind]
-            );
+            let beacon_id = derive_beacon_id(airnodes[ind].clone().to_vec(), template_ids[ind]);
             let data_point = d.get(&beacon_id).ok_or(Error::BeaconDataNotFound)?;
-            values[ind] = data_point.value.clone();
+            values[ind] = Int::from(data_point.value.clone());
             accumulated_timestamp += U256::from(data_point.timestamp);
             beacon_ids[ind] = beacon_id;
         }
@@ -112,7 +116,10 @@ pub fn derive_beacon_id(airnode: Bytes, template_id: Bytes32) -> Bytes32 {
 /// @param beaconIds Beacon IDs
 /// @return dapiId dAPI ID
 fn derive_dapi_id(beacon_ids: &Vec<Bytes32>) -> Bytes32 {
-    let tokens: Vec<Token> = beacon_ids.iter().map(|b| Token::FixedBytes(b.to_vec())).collect();
+    let tokens: Vec<Token> = beacon_ids
+        .iter()
+        .map(|b| Token::FixedBytes(b.to_vec()))
+        .collect();
     let encoded = encode(&tokens);
     keccak256(&encoded)
 }
@@ -124,7 +131,7 @@ pub fn decode_fulfillment_data(data: &Bytes) -> Result<Int, Error> {
     ensure!(tokens.len() == 1, Error::InvalidDataLength)?;
 
     if let Token::Int(i) = tokens[0] {
-        Ok(i)
+        Ok(Int(i))
     } else {
         Err(Error::InvalidDataType)
     }

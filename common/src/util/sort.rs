@@ -1,7 +1,7 @@
-use crate::U256;
+use crate::Int;
 
 /// sort an array of U256
-pub fn sort(array: &[U256]) -> Vec<U256> {
+pub fn sort(array: &[Int]) -> Vec<Int> {
     let mut array = array.to_vec();
     array.sort();
     array

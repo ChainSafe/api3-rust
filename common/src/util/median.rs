@@ -1,8 +1,8 @@
 use super::sort;
-use crate::U256;
+use crate::Int;
 
 /// get the median from an array of U256
-pub fn median(array: &[U256]) -> U256 {
+pub fn median(array: &[Int]) -> Int {
     let len = array.len();
     let array = sort(array);
     let mid: usize = len / 2;
