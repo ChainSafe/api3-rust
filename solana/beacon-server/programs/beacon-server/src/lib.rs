@@ -39,8 +39,8 @@ pub mod beacon_server {
 
         let timestamp = Uint::from(&timestamp);
         let mut s = SolanaHashMap::new(
-            vec![(beacon_id.clone(), &mut ctx.accounts.datapoint)],
-            HashMap::new()
+            vec![(beacon_id, &mut ctx.accounts.datapoint)],
+            HashMap::new(),
         );
         process_beacon_update(&mut s, beacon_id, timestamp, data).map_err(map_error)?;
 

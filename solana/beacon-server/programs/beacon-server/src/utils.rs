@@ -14,7 +14,7 @@ pub(crate) struct SolanaHashMap<'info, 'account> {
 impl<'info, 'account> SolanaHashMap<'info, 'account> {
     pub fn new(
         accounts: Vec<(Bytes32, &'account mut AccountRef<'info>)>,
-        read: HashMap<Bytes32, DataPoint>
+        read: HashMap<Bytes32, DataPoint>,
     ) -> Self {
         let mut write = HashMap::new();
         for (key, aref) in accounts {
