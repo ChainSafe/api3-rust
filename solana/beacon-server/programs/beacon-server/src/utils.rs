@@ -5,54 +5,43 @@ use anchor_lang::prelude::*;
 use api3_common::{Bytes32, DataPoint, DataPointStorage, SignatureManger, TimestampChecker};
 
 pub type AccountRef<'info> = Account<'info, WrappedDataPoint>;
-const DATAPOINT_SEED: &str = "datapoint";
 
 pub(crate) struct SolanaHashMap<'info, 'account> {
     write: HashMap<Bytes32, &'account mut AccountRef<'info>>,
     read: HashMap<Bytes32, DataPoint>,
-    pid: Pubkey
 }
 
 impl<'info, 'account> SolanaHashMap<'info, 'account> {
     pub fn new(
         accounts: Vec<(Bytes32, &'account mut AccountRef<'info>)>,
-        read: HashMap<Bytes32, DataPoint>,
-        pid: Pubkey
+        read: HashMap<Bytes32, DataPoint>
     ) -> Self {
         let mut write = HashMap::new();
         for (key, aref) in accounts {
             write.insert(key, aref);
         }
-        Self { write, read, pid }
-    }
-
-    fn key(&self, key: &Bytes32) -> Bytes32 {
-        let (k, _) = Pubkey::find_program_address(&[DATAPOINT_SEED.as_bytes(), key], &self.pid);
-        k.to_bytes()
+        Self { write, read }
     }
 }
 
-impl <'info, 'account> DataPointStorage for SolanaHashMap<'info, 'account> {
-    fn get(&self, key: &Bytes32) -> Option<DataPoint> {
-        let k = self.key(key);
-        match self.read.get(&k) {
+impl<'info, 'account> DataPointStorage for SolanaHashMap<'info, 'account> {
+    fn get(&self, k: &Bytes32) -> Option<DataPoint> {
+        // let k = self.key(key);
+        match self.read.get(k) {
             Some(d) => Some(d.clone()),
-            None => self.write.get(&k).map(|a| {
+            None => self.write.get(k).map(|a| {
                 if a.raw_datapoint.is_empty() {
                     DataPoint::default()
                 } else {
                     DataPoint::from(a.raw_datapoint.clone()).expect("cannot load datapoint")
                 }
-            })
+            }),
         }
     }
 
-    fn store(&mut self, key: Bytes32, datapoint: DataPoint) {
-        let k = self.key(&key);
-        let a = self
-            .write
-            .get_mut(&k)
-            .expect("cannot load from datapoint");
+    fn store(&mut self, k: Bytes32, datapoint: DataPoint) {
+        // let k = self.key(&key);
+        let a = self.write.get_mut(&k).expect("cannot load from datapoint");
         (*a).raw_datapoint = Vec::from(datapoint);
     }
 }

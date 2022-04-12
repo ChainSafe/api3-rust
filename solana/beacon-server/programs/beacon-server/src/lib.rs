@@ -1,8 +1,8 @@
 mod utils;
 
-use crate::utils::{DummySignatureManger, SolanaHashMap, SolanaClock};
-use api3_common::{derive_beacon_id, ensure, process_beacon_update, Bytes32, Uint, DataPoint};
-use anchor_lang::{ prelude::borsh::maybestd::collections::HashMap, prelude::* };
+use crate::utils::{DummySignatureManger, SolanaClock, SolanaHashMap};
+use anchor_lang::{prelude::borsh::maybestd::collections::HashMap, prelude::*};
+use api3_common::{derive_beacon_id, ensure, process_beacon_update, Bytes32, DataPoint, Uint};
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
@@ -12,7 +12,6 @@ const ERROR_INVALID_SYSVAR_INSTRUCTIONS_KEY: u64 = 2u64;
 const ERROR_SIGNATURES_NOT_VALIDATED: u64 = 3u64;
 const ERROR_SIGNATURES_MORE_THAN_DATA: u64 = 4u64;
 const ERROR_NOT_ENOUGH_ACCOUNT: u64 = 5u64;
-const ERROR_API3_COMMON: u64 = 1000u64;
 
 fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
     anchor_lang::error::Error::from(ProgramError::Custom(e.into()))
@@ -40,9 +39,8 @@ pub mod beacon_server {
 
         let timestamp = Uint::from(&timestamp);
         let mut s = SolanaHashMap::new(
-            vec![(ctx.accounts.datapoint.to_account_info().key.to_bytes(), &mut ctx.accounts.datapoint)],
-            HashMap::new(),
-            ctx.program_id.clone()
+            vec![(beacon_id.clone(), &mut ctx.accounts.datapoint)],
+            HashMap::new()
         );
         process_beacon_update(&mut s, beacon_id, timestamp, data).map_err(map_error)?;
 
@@ -72,8 +70,24 @@ pub mod beacon_server {
         utils::check_beacon_ids(&beacon_ids, &beacon_id_tuples)?;
         utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 
-        let account = &mut ctx.accounts.datapoint;
-        account.raw_datapoint = vec![1];
+        // Step 2. Prepare the accounts
+        let mut idx = 0;
+        let write = vec![(datapoint_key, &mut ctx.accounts.datapoint)];
+        let mut read = HashMap::new();
+        for (_, wrapped) in beacon_id_tuples {
+            let datapoint =
+                DataPoint::from(wrapped.raw_datapoint.clone()).expect("cannot parse datapoint");
+            read.insert(beacon_ids[idx], datapoint);
+            idx += 1;
+        }
+
+        ensure!(
+            idx == beacon_ids.len(),
+            Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT))
+        )?;
+
+        let mut s = SolanaHashMap::new(write, read);
+        api3_common::update_dapi_with_beacons(&mut s, &beacon_ids).map_err(map_error)?;
         Ok(())
     }
 
@@ -115,16 +129,21 @@ pub mod beacon_server {
         let write = vec![(datapoint_key, &mut ctx.accounts.datapoint)];
         let mut read = HashMap::new();
         for account in account_iter {
+            let beacon_offset = idx + sig_count;
             let wrapped: Account<WrappedDataPoint> = Account::try_from(account)?;
-            let datapoint = DataPoint::from(wrapped.raw_datapoint.clone()).expect("cannot parse datapoint");
-            read.insert(beacon_ids[idx], datapoint);
+            let datapoint =
+                DataPoint::from(wrapped.raw_datapoint.clone()).expect("cannot parse datapoint");
+            read.insert(beacon_ids[beacon_offset], datapoint);
             idx += 1;
         }
         idx += sig_count;
 
-        ensure!(idx == beacon_ids.len(), Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT)))?;
+        ensure!(
+            idx == beacon_ids.len(),
+            Error::from(ProgramError::from(ERROR_NOT_ENOUGH_ACCOUNT))
+        )?;
 
-        let mut s = SolanaHashMap::new(write, read, ctx.program_id.clone());
+        let mut s = SolanaHashMap::new(write, read);
         let clock = SolanaClock::new(Clock::get().unwrap().unix_timestamp as u32);
 
         api3_common::update_dapi_with_signed_data(
@@ -136,7 +155,8 @@ pub mod beacon_server {
             timestamps,
             data,
             (0..idx).into_iter().map(|_| vec![]).collect(),
-        ).map_err(map_error)?;
+        )
+        .map_err(map_error)?;
         Ok(())
     }
 

@@ -1,6 +1,16 @@
 import { ethers } from "ethers";
 import * as anchor from "@project-serum/anchor";
 
+export function createRawDatapointBuffer(data: number, timestamp: number): Buffer {
+    const expected = Buffer.allocUnsafe(36);
+    expected.writeBigInt64BE(BigInt(0), 0);
+    expected.writeBigInt64BE(BigInt(0), 8);
+    expected.writeBigInt64BE(BigInt(0), 16);
+    expected.writeBigInt64BE(BigInt(data), 24);
+    expected.writeUInt32BE(timestamp, 32);
+    return expected;
+}
+
 export function prepareMessage(
     templateId: number,
     timestamp: number,

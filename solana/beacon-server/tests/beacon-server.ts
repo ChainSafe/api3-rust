@@ -2,7 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import { assert, expect } from "chai";
 import nacl from 'tweetnacl';
 import * as fs from "fs";
-import { bufferU64BE, deriveBeaconId, deriveDApiId, deriveDatapointPDA, encodeData, prepareMessage } from "./utils";
+import { bufferU64BE, createRawDatapointBuffer, deriveBeaconId, deriveDApiId, deriveDatapointPDA, encodeData, prepareMessage } from "./utils";
 import { createInstructionWithPublicKey } from "./sig";
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
@@ -86,44 +86,57 @@ describe("beacon-server", () => {
   const programId = new anchor.web3.PublicKey("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
   const program = new anchor.Program(idl, programId);
 
-  const airnode = anchor.web3.Keypair.generate();
   const airnode1 = anchor.web3.Keypair.generate();
   const airnode2 = anchor.web3.Keypair.generate();
   const airnode3 = anchor.web3.Keypair.generate();
+  const airnode4 = anchor.web3.Keypair.generate();
   const messageRelayer = anchor.web3.Keypair.generate();
+
+  // define all the data
+  const templateId1 = 1;
+  const timestamp1 = 1649133996;    
+  const data1 = 121;
+
+  const templateId2 = 1;
+  const timestamp2 = 1649133997;    
+  const data2 = 122;
+
+  const templateID3 = 1;
+  const timestamp3 = 1649133998;
+  const data3 = 123;
+
+  const templateID4 = 1;
+  const timestamp4 = 1649134000;
+  const data4 = 125;
 
   before(async () => {
     // fund the accounts one shot
-    await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(airnode.publicKey, anchor.web3.LAMPORTS_PER_SOL));
     await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(airnode1.publicKey, anchor.web3.LAMPORTS_PER_SOL));
     await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(airnode2.publicKey, anchor.web3.LAMPORTS_PER_SOL));
     await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(airnode3.publicKey, anchor.web3.LAMPORTS_PER_SOL));
+    await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(airnode4.publicKey, anchor.web3.LAMPORTS_PER_SOL));
     await provider.connection.confirmTransaction(await provider.connection.requestAirdrop(messageRelayer.publicKey, anchor.web3.LAMPORTS_PER_SOL));
   })
 
   it("updateBeaconWithSignedData", async () => {
     // 1. Airnode create the txn
-    const templateID = 1;
-    const timestamp = 1649133996;    
-    const data = 123;
-
-    const beaconId = deriveBeaconId(airnode.publicKey.toBytes(), templateID);
+    const beaconId = deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
     const beaconIdPDA = await deriveDatapointPDA(beaconId, program.programId);
-    console.log("raw beaconId with length", beaconId.length, "and value", beaconId.toString("hex"), "pda", beaconIdPDA.toString());
+    // console.log("raw beaconId with length", beaconId.length, "and value", beaconId.toString("hex"), "pda", beaconIdPDA.toString(), program.programId);
 
     const [airnodeSignature, airnodeTxn] = await newUpdateBeaconWithSignedDataTxn(
       beaconId,
-      templateID,
-      timestamp,
-      data,
+      templateID3,
+      timestamp3,
+      data3,
       program,
       beaconIdPDA,
-      airnode,
+      airnode3,
       messageRelayer.publicKey
     );
-    
+
     // 2. Relay the transaction
-    const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode.publicKey, messageRelayer);
+    const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode3.publicKey, messageRelayer);
 
     // 3. Send transaction
     await provider.connection.sendRawTransaction(offlineTxn);
@@ -134,66 +147,76 @@ describe("beacon-server", () => {
     const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(beaconIdPDA);
 
     // construct expected
-    const expected = Buffer.allocUnsafe(36);
-    expected.writeBigInt64BE(BigInt(0), 0);
-    expected.writeBigInt64BE(BigInt(0), 8);
-    expected.writeBigInt64BE(BigInt(0), 16);
-    expected.writeBigInt64BE(BigInt(data), 24);
-    expected.writeUInt32BE(timestamp, 32);
-
+    const expected = createRawDatapointBuffer(data3, timestamp3);
     expect(wrappedDataPoint.rawDatapoint).to.deep.eq(expected);
   });
 
-  // it("updateDapiWithBeacons", async () => {
-  //   const [beaconIdPDA] = await anchor.web3.PublicKey.findProgramAddress(
-  //     [
-  //       Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
-  //       beaconID
-  //     ],
-  //     program.programId
-  //   )
+  it("updateDapiWithBeacons", async () => {
+    // Create the datapoint 4
+    const beaconId4 = deriveBeaconId(airnode4.publicKey.toBytes(), templateID4);
+    const beaconIdPDA4 = await deriveDatapointPDA(beaconId4, program.programId);
+    // console.log("raw beaconId with length", beaconId.length, "and value", beaconId.toString("hex"), "pda", beaconIdPDA.toString(), program.programId);
 
-  //   const tempDAPIId = Buffer.from("1".padEnd(64, "0"), "hex");
-  //   const [dapiPDA] = await anchor.web3.PublicKey.findProgramAddress(
-  //     [
-  //       Buffer.from(anchor.utils.bytes.utf8.encode("datapoint")),
-  //       tempDAPIId
-  //     ],
-  //     program.programId
-  //   )
+    const [airnodeSignature, airnodeTxn] = await newUpdateBeaconWithSignedDataTxn(
+      beaconId4,
+      templateID4,
+      timestamp4,
+      data4,
+      program,
+      beaconIdPDA4,
+      airnode4,
+      messageRelayer.publicKey
+    );
+    const offlineTxn = await relayTxn(airnodeTxn, airnodeSignature, airnode4.publicKey, messageRelayer);
+    await provider.connection.sendRawTransaction(offlineTxn);
 
-  //   const tx = await program.rpc.updateDapiWithBeacons(
-  //     tempDAPIId,
-  //     [beaconID],
-  //     {
-  //       accounts: {
-  //         dapi: dapiPDA,
-  //         user: anchor.getProvider().wallet.publicKey,
-  //         systemProgram: anchor.web3.SystemProgram.programId,
-  //       },
-  //       remainingAccounts: [
-  //         { isSigner: false, isWritable: false, pubkey: beaconIdPDA }
-  //       ],
-  //     }
-  //   );
+    // wait a bit for the transaction to take effect
+    await delay(1000);
 
-  //   const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
-  //   console.log(JSON.stringify(wrappedDataPoint));
-  //   // expect(wrappedDataPoint.rawDatapoint).to.deep.eq(data);
-  // });
+    const wrappedDataPoint4 = await program.account.wrappedDataPoint.fetch(beaconIdPDA4);
+    const expected = createRawDatapointBuffer(data4, timestamp4);
+    expect(wrappedDataPoint4.rawDatapoint).to.deep.eq(expected);
+
+    // now test updateDapiWithBeacons
+    const beaconId3 = deriveBeaconId(airnode3.publicKey.toBytes(), templateID3);
+    const beaconIds = [beaconId3, beaconId4];
+    const dataPointId = deriveDApiId(beaconIds);
+    const dapiPDA = await deriveDatapointPDA(dataPointId, program.programId);
+
+    const updateInstruction = await program.instruction.updateDapiWithBeacons(
+      dataPointId,
+      beaconIds,
+      {
+        accounts: {
+          datapoint: dapiPDA,
+          user: messageRelayer.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        remainingAccounts: [
+          { isSigner: false, isWritable: false, pubkey: await deriveDatapointPDA(beaconId3, program.programId) },
+          { isSigner: false, isWritable: false, pubkey: await deriveDatapointPDA(beaconId4, program.programId) },
+        ]
+      }
+    );
+
+    const tx = new anchor.web3.Transaction();
+    tx.add(updateInstruction);
+    await anchor.web3.sendAndConfirmTransaction(
+      provider.connection,
+      tx,
+      [messageRelayer],
+    );
+
+    let wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
+    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(createRawDatapointBuffer(124, 1649133999));
+  });
 
   it("updateDapiWithSignedData", async () => {
     // Step 1. Airnode1 create the data
-    const templateId1 = 1;
-    const timestamp1 = 1649133996;    
-    const data1 = 123;
     const message1 = prepareMessage(templateId1, timestamp1, data1);
     const sig1 = nacl.sign.detached(message1, airnode1.secretKey);
 
     // Step 2. Airnode2 create the data
-    const templateId2 = 2;
-    const timestamp2 = 1649133997;    
-    const data2 = 124;
     const message2 = prepareMessage(templateId2, timestamp2, data2);
     const sig2 = nacl.sign.detached(message2, airnode2.secretKey);
     
@@ -204,9 +227,9 @@ describe("beacon-server", () => {
     // Step 4. Create the transaction call
     const beaconId1 = deriveBeaconId(airnode1.publicKey.toBytes(), templateId1);
     const beaconId2 = deriveBeaconId(airnode2.publicKey.toBytes(), templateId2);
-    const beaconId3 = deriveBeaconId(airnode.publicKey.toBytes(), templateId3);
-    console.log("beaconId3", beaconId3.toString("hex"));
+    const beaconId3 = deriveBeaconId(airnode3.publicKey.toBytes(), templateId3);
     const beaconIds = [beaconId1, beaconId2, beaconId3];
+    // console.log("beaconId3", [beaconId1, beaconId2, beaconId3].map(b => b.toString("hex")));
 
     const dataPointId = deriveDApiId(beaconIds);
 
@@ -223,12 +246,10 @@ describe("beacon-server", () => {
     for (const id of [beaconId3]) {
       const pda = await deriveDatapointPDA(id, program.programId);
       const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(pda);
-      console.log(wrappedDataPoint);
-      console.log("pda", id.toString("hex"), pda.toString(), airnode.publicKey.toString());
+      expect(wrappedDataPoint.rawDatapoint.length > 0).to.eq(true);
       remainingAccounts.push({ isSigner: false, isWritable: false, pubkey: pda });
     }
 
-    console.log([airnode1, airnode2, airnode3].map(t => t.publicKey.toBytes()));
     const updateInstruction = program.instruction.updateDapiWithSignedData(
       dataPointId,
       [airnode1, airnode2, airnode3].map(t => t.publicKey.toBytes()),
@@ -255,5 +276,12 @@ describe("beacon-server", () => {
       tx,
       [messageRelayer],
     );
+
+    // wait a bit for the transaction to take effect
+    await delay(1000);
+
+    const wrappedDataPoint = await program.account.wrappedDataPoint.fetch(dapiPDA);
+    const expected = createRawDatapointBuffer(data2, timestamp2);
+    expect(wrappedDataPoint.rawDatapoint).to.deep.eq(expected);
   });
 });
