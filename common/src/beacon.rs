@@ -1,3 +1,4 @@
+use crate::access::{AccessControlRegistry, Role};
 use crate::*;
 
 const ONE_HOUR_SEC: u32 = 3600000;
@@ -5,9 +6,9 @@ const FIFTEEN_MINUTES_SEC: u32 = 900000;
 
 /// Generic storage trait. Used for the common processing logic so that each chain could
 /// have their own implementation.
-pub trait DataPointStorage {
-    fn get(&self, key: &Bytes32) -> Option<DataPoint>;
-    fn store(&mut self, key: Bytes32, datapoint: DataPoint);
+pub trait Storage<T> {
+    fn get(&self, key: &Bytes32) -> Option<T>;
+    fn store(&mut self, key: Bytes32, t: T);
 }
 
 /// Public trait that handles signature verification across different chains
@@ -35,9 +36,34 @@ pub trait TimestampChecker {
     }
 }
 
+/// Sets the data point ID the name points to
+/// While a data point ID refers to a specific Beacon or dAPI, names
+/// provide a more abstract interface for convenience. This means a name
+/// that was pointing at a Beacon can be pointed to a dAPI, then another
+/// dAPI, etc.
+/// `name` Human-readable name
+/// `data_point_id` Data point ID the name will point to
+pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
+    name: Bytes32,
+    data_point_id: Bytes32,
+    msg_sender: &[u8],
+    access: &A,
+    storage: &mut D,
+) -> Result<(), Error> {
+    ensure!(name != Bytes32::default(), Error::InvalidData)?;
+    ensure!(data_point_id != Bytes32::default(), Error::InvalidData)?;
+    ensure!(access.has_role(Role::NameSetter, msg_sender), Error::AccessDenied)?;
+
+    let (encoded, _) = encode_packed(&[Token::FixedBytes(name.to_vec())]);
+    let key = keccak256(&encoded);
+    storage.store(key, data_point_id);
+
+    Ok(())
+}
+
 /// Updates the dAPI that is specified by the beacon IDs
 /// `beacon_ids` is the list of beacon ids to perform aggregation
-pub fn update_dapi_with_beacons<D: DataPointStorage>(
+pub fn update_dapi_with_beacons<D: Storage<DataPoint>>(
     d: &mut D,
     beacon_ids: &[Bytes32],
 ) -> Result<(), Error> {
@@ -70,7 +96,7 @@ pub fn update_dapi_with_beacons<D: DataPointStorage>(
 
 #[allow(clippy::too_many_arguments)]
 pub fn update_dapi_with_signed_data<
-    D: DataPointStorage,
+    D: Storage<DataPoint>,
     S: SignatureManger,
     T: TimestampChecker,
 >(
@@ -180,7 +206,7 @@ pub fn decode_fulfillment_data(data: &Bytes) -> Result<Int, Error> {
     }
 }
 
-pub fn process_beacon_update<D: DataPointStorage>(
+pub fn process_beacon_update<D: Storage<DataPoint>>(
     s: &mut D,
     beacon_id: Bytes32,
     timestamp: Uint,

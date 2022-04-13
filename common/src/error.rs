@@ -15,6 +15,7 @@ pub enum Error {
     InvalidTimestamp,
     InvalidSignature,
     UpdatedValueOutdated,
+    AccessDenied,
 }
 
 #[cfg(feature = "recovery")]
@@ -42,6 +43,7 @@ impl From<Error> for u32 {
             Error::InvalidTimestamp => 11,
             Error::InvalidSignature => 12,
             Error::UpdatedValueOutdated => 13,
+            Error::AccessDenied => 14,
         }
     }
 }
