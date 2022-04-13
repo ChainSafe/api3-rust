@@ -1,4 +1,5 @@
 use crate::access::{AccessControlRegistry, Role};
+use crate::whitelist::Whitelist;
 use crate::*;
 
 const ONE_HOUR_SEC: u32 = 3600000;
@@ -52,13 +53,77 @@ pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
 ) -> Result<(), Error> {
     ensure!(name != Bytes32::default(), Error::InvalidData)?;
     ensure!(data_point_id != Bytes32::default(), Error::InvalidData)?;
-    ensure!(access.has_role(Role::NameSetter, msg_sender), Error::AccessDenied)?;
+    ensure!(
+        access.has_role(Role::NameSetter, msg_sender),
+        Error::AccessDenied
+    )?;
 
-    let (encoded, _) = encode_packed(&[Token::FixedBytes(name.to_vec())]);
-    let key = keccak256(&encoded);
-    storage.store(key, data_point_id);
+    storage.store(
+        keccak_packed(&[Token::FixedBytes(name.to_vec())]),
+        data_point_id,
+    );
 
     Ok(())
+}
+
+/// Reads the data point with ID
+/// `data_point_id` Data point ID
+/// `value` Data point value
+/// `timestamp` Data point timestamp
+pub fn read_with_data_point_id<D: Storage<DataPoint>, A: AccessControlRegistry, W: Whitelist>(
+    data_point_id: &Bytes32,
+    msg_sender: &[u8],
+    d: &D,
+    a: &A,
+    w: &W,
+) -> Result<(Int, u32), Error> {
+    ensure!(
+        reader_can_read_data_point(data_point_id, msg_sender, a, w),
+        Error::AccessDenied
+    )?;
+    let data_point = d.get(data_point_id).ok_or(Error::BeaconDataNotFound)?;
+    Ok((data_point.value, data_point.timestamp))
+}
+
+/// Reads the data point with name
+/// The read data point may belong to a Beacon or dAPI. The reader
+/// must be whitelisted for the hash of the data point name.
+/// `name` Data point name
+pub fn read_with_name<
+    D: Storage<DataPoint>,
+    H: Storage<Bytes32>,
+    A: AccessControlRegistry,
+    W: Whitelist,
+>(
+    name: Bytes32,
+    msg_sender: &[u8],
+    d: &D,
+    h: &H,
+    a: &A,
+    w: &W,
+) -> Result<(Int, u32), Error> {
+    let name_hash = keccak_packed(&[Token::FixedBytes(name.to_vec())]);
+    ensure!(
+        reader_can_read_data_point(&name_hash, msg_sender, a, w),
+        Error::AccessDenied
+    )?;
+    let key = h.get(&name_hash).ok_or(Error::NameHashNotFound)?;
+    let data_point = d.get(&key).ok_or(Error::BeaconDataNotFound)?;
+    Ok((data_point.value, data_point.timestamp))
+}
+
+/// @notice Returns if a reader can read the data point
+/// `data_point_id` Data point ID (or data point name hash)
+/// `reader` Reader address
+pub fn reader_can_read_data_point<A: AccessControlRegistry, W: Whitelist>(
+    data_point_id: &Bytes32,
+    reader: &[u8],
+    access: &A,
+    whitelist: &W,
+) -> bool {
+    reader.is_empty()
+        || whitelist.user_is_whitelisted(data_point_id, reader)
+        || access.has_role(Role::UnlimitedReaderRole, reader)
 }
 
 /// Updates the dAPI that is specified by the beacon IDs

@@ -6,6 +6,7 @@ mod datapoint;
 mod error;
 pub mod types;
 mod util;
+mod whitelist;
 
 pub use abi::*;
 pub use agg::Aggregator;

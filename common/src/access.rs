@@ -2,6 +2,8 @@
 pub enum Role {
     /// Name setter role
     NameSetter,
+    /// Unlimited reader role
+    UnlimitedReaderRole,
 }
 
 /// The access control registry interface in the solidity contract

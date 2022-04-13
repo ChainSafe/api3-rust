@@ -16,6 +16,7 @@ pub enum Error {
     InvalidSignature,
     UpdatedValueOutdated,
     AccessDenied,
+    NameHashNotFound,
 }
 
 #[cfg(feature = "recovery")]
@@ -44,6 +45,7 @@ impl From<Error> for u32 {
             Error::InvalidSignature => 12,
             Error::UpdatedValueOutdated => 13,
             Error::AccessDenied => 14,
+            Error::NameHashNotFound => 15,
         }
     }
 }
