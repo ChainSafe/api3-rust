@@ -4,7 +4,7 @@ mod beacon;
 mod datapoint;
 mod error;
 pub mod types;
-mod util;
+pub mod util;
 
 pub use abi::*;
 pub use agg::Aggregator;

@@ -1,7 +1,11 @@
 use crate::U256;
+use std::cmp::Ord;
 
 /// sort an array of U256
-pub fn sort(array: &[U256]) -> Vec<U256> {
+pub fn sort<T>(array: &[T]) -> Vec<T>
+where
+    T: Clone + Ord,
+{
     let mut array = array.to_vec();
     array.sort();
     array

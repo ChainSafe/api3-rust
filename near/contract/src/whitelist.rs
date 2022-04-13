@@ -78,10 +78,10 @@ impl Whitelist {
             .remove(&user)
             .expect("must contain this user");
 
-        assert!(
-            expiration_timestamp > whitelist_status.expiration_timestamp,
-            "Does not extend expiration"
-        );
+        //In v4.0.0, use the require! macro
+        if expiration_timestamp > whitelist_status.expiration_timestamp {
+            env::panic(b"Does not extend expiration");
+        }
 
         whitelist_status.expiration_timestamp = expiration_timestamp;
 
