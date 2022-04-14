@@ -1,3 +1,5 @@
+use crate::ensure;
+use crate::error_panic;
 use api3_common::decode;
 use api3_common::encode;
 use api3_common::encode_packed;
@@ -8,6 +10,7 @@ use api3_common::types::U256;
 use api3_common::util::median_wrapped_u256;
 use api3_common::Bytes;
 use api3_common::Bytes32;
+use api3_common::Error;
 use api3_common::ParamType;
 use api3_common::Token;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
@@ -48,9 +51,7 @@ impl DapiServer {
     /// @dev Reverts if the timestamp is not valid
     /// @param timestamp Timestamp used in the signature
     fn only_valid_timestamp(timestamp: U256) {
-        if !Self::timestamp_is_valid(timestamp) {
-            env::panic(b"Timestamp not valid");
-        }
+        ensure!(Self::timestamp_is_valid(timestamp), Error::InvalidTimestamp)
     }
 
     /// @param _accessControlRegistry AccessControlRegistry contract address
@@ -88,9 +89,7 @@ impl DapiServer {
     /// @return dapiId dAPI ID
     fn update_dapi_with_beacons(&mut self, beacon_ids: &[Bytes32]) -> Bytes32 {
         let beacon_count = beacon_ids.len();
-        if !beacon_count > 1 {
-            env::panic(b"Specified less than two Beacons");
-        }
+        ensure!(beacon_count > 1, Error::LessThanTwoBeacons);
 
         // TODO: this is originally int256, find out if this deals with negative values
         // if not then U256 is fine
@@ -107,9 +106,10 @@ impl DapiServer {
         //TODO: use the function from common by willes
         let dapi_id = Self::derive_dapi_id(beacon_ids);
         if let Some(data_point_for_dapi_id) = self.data_points.get(&dapi_id) {
-            if !updated_timestamp >= data_point_for_dapi_id.timestamp {
-                env::panic(b"Updated value outdated");
-            }
+            ensure!(
+                updated_timestamp >= data_point_for_dapi_id.timestamp,
+                Error::UpdatedValueOutdated
+            );
         } else {
             env::panic(b"data point has no entry")
         }
@@ -141,15 +141,14 @@ impl DapiServer {
         signatures: Vec<Bytes>,
     ) -> Bytes32 {
         let beacon_count = airnodes.len();
-        if !(beacon_count == template_ids.len()
-            && beacon_count == timestamps.len()
-            && beacon_count == signatures.len())
-        {
-            env::panic(b"Parameter length mismatch");
-        }
-        if !beacon_count > 1 {
-            env::panic(b"Specified less than two Beacons");
-        }
+        ensure!(
+            beacon_count == template_ids.len()
+                && beacon_count == timestamps.len()
+                && beacon_count == signatures.len(),
+            Error::ParameterLengthMismatch
+        );
+
+        ensure!(beacon_count > 1, Error::LessThanTwoBeacons);
 
         let beacon_ids: Vec<Bytes32> = Vec::with_capacity(beacon_count);
         let mut values: Vec<U256> = Vec::with_capacity(beacon_count);
@@ -161,14 +160,16 @@ impl DapiServer {
                 let timestamp = &timestamps[ind];
                 let template_id = &template_ids[ind];
                 let data = &data[ind];
-                if !Self::timestamp_is_valid(*timestamp) {
-                    env::panic(b"Timestamp not valid")
-                }
+                ensure!(
+                    Self::timestamp_is_valid(*timestamp),
+                    Error::InvalidTimestamp
+                );
 
                 let message = Self::encode_signed_message_hash(template_id, *timestamp, data);
-                if !self.verify(airnode, &message, &signature) {
-                    env::panic(b"Signature mismatch");
-                }
+                ensure!(
+                    self.verify(airnode, &message, &signature),
+                    Error::InvalidSignature
+                );
 
                 values.push(Self::decode_fulfillment_data(data));
             }
@@ -191,19 +192,15 @@ impl DapiServer {
     }
 
     fn decode_fulfillment_data(data: &Bytes) -> U256 {
-        if !data.len() == 32 {
-            env::panic(b"Data length not correct");
-        }
+        ensure!(data.len() == 32, Error::InvalidDataLength);
 
         let decoded_data = decode(&[ParamType::Int(0)], data).unwrap();
-        if !decoded_data.len() == 1 {
-            env::panic(b"Invalid data length")
-        }
+        ensure!(decoded_data.len() == 1, Error::InvalidDataLength);
 
         if let Token::Int(i) = decoded_data[0] {
             U256::from(i)
         } else {
-            env::panic(b"Invalid Datatype")
+            error_panic!(Error::InvalidDataType);
         }
     }
 

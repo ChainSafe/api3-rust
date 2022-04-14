@@ -1,3 +1,4 @@
+use crate::ensure;
 /// derived from Whitelist.sol
 ///
 /// @title Contract that implements temporary and permanent whitelists for
@@ -20,6 +21,7 @@ use std::io;
 use api3_common::types::Address;
 use api3_common::types::U256;
 use api3_common::Bytes32;
+use api3_common::WhitelistError;
 
 near_sdk::setup_alloc!();
 
@@ -78,10 +80,10 @@ impl Whitelist {
             .remove(&user)
             .expect("must contain this user");
 
-        //In v4.0.0, use the require! macro
-        if expiration_timestamp > whitelist_status.expiration_timestamp {
-            env::panic(b"Does not extend expiration");
-        }
+        ensure!(
+            expiration_timestamp > whitelist_status.expiration_timestamp,
+            WhitelistError::DoesNotExtendExpiration
+        );
 
         whitelist_status.expiration_timestamp = expiration_timestamp;
 

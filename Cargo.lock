@@ -37,6 +37,7 @@ dependencies = [
  "libsecp256k1",
  "rand 0.8.5",
  "serde",
+ "thiserror",
  "tiny-keccak 2.0.2",
  "uint 0.8.5",
  "web3",

@@ -1,20 +1,45 @@
-#[derive(Debug)]
+use std::fmt::Debug;
+use thiserror::Error;
+
+//TODO: copy the exact error messages from the original solidity code
+#[derive(Error, Debug)]
 pub enum Error {
+    #[error("")]
     CannotDeserializeDataPoint,
+    #[error("")]
     InvalidData,
+    #[error("Data length not correct")]
     InvalidDataLength,
+    #[error("Invalid data type")]
     InvalidDataType,
+    #[error("Beacon data not found")]
     BeaconDataNotFound,
+    #[error("Fulfillment older than Beacon")]
     FulfillmentOlderThanBeacon,
+    #[error("Invalid name: {0}")]
     InvalidName(String),
+    #[error("Eth Abi Error: {0}")]
     EthAbiError(ethabi::Error),
     #[cfg(feature = "recovery")]
     Libsecp256k1Error(libsecp256k1::Error),
+    #[error("Parameter length mismatch")]
     ParameterLengthMismatch,
+    #[error("Specified less than two Beacons")]
     LessThanTwoBeacons,
+    #[error("Timestamp not valid")]
     InvalidTimestamp,
+    #[error("Signature mismatch")]
     InvalidSignature,
+    #[error("Updated value outdated")]
     UpdatedValueOutdated,
+    #[error("Whitelist Error: {0}")]
+    WhiteListError(WhitelistError),
+}
+
+#[derive(Error, Debug)]
+pub enum WhitelistError {
+    #[error("Does not extend expiration")]
+    DoesNotExtendExpiration,
 }
 
 #[cfg(feature = "recovery")]
@@ -42,6 +67,7 @@ impl From<Error> for u32 {
             Error::InvalidTimestamp => 11,
             Error::InvalidSignature => 12,
             Error::UpdatedValueOutdated => 13,
+            Error::WhiteListError(WhitelistError) => 14,
         }
     }
 }
