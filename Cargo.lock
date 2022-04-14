@@ -44,6 +44,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "api3-contract"
+version = "0.1.0"
+dependencies = [
+ "api3-common",
+ "ethereum-types 0.13.1",
+ "near-sdk",
+ "serde",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -242,16 +252,6 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
-
-[[package]]
-name = "contract"
-version = "0.1.0"
-dependencies = [
- "api3-common",
- "ethereum-types 0.13.1",
- "near-sdk",
- "serde",
-]
 
 [[package]]
 name = "convert_case"
