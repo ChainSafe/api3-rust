@@ -17,6 +17,7 @@ pub enum Error {
     UpdatedValueOutdated,
     AccessDenied,
     NameHashNotFound,
+    RoleDescriptionEmpty,
 }
 
 #[cfg(feature = "recovery")]
@@ -46,6 +47,7 @@ impl From<Error> for u32 {
             Error::UpdatedValueOutdated => 13,
             Error::AccessDenied => 14,
             Error::NameHashNotFound => 15,
+            Error::RoleDescriptionEmpty => 16,
         }
     }
 }

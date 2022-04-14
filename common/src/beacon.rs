@@ -1,9 +1,9 @@
-use crate::access::{AccessControlRegistry, Role};
+use crate::access::{AccessControlRegistry, Empty};
 use crate::whitelist::Whitelist;
 use crate::*;
 
-const ONE_HOUR_SEC: u32 = 3600000;
-const FIFTEEN_MINUTES_SEC: u32 = 900000;
+const ONE_HOUR_IN_MS: u32 = 3600000;
+const FIFTEEN_MINUTES_IN_MS: u32 = 900000;
 
 /// Generic storage trait. Used for the common processing logic so that each chain could
 /// have their own implementation.
@@ -30,10 +30,10 @@ pub trait TimestampChecker {
     fn is_valid(&self, timestamp: u32) -> bool {
         let c = self.current_timestamp();
         timestamp
-            .checked_add(ONE_HOUR_SEC)
+            .checked_add(ONE_HOUR_IN_MS)
             .expect("Invalid timestamp")
             > c
-            && timestamp < c + FIFTEEN_MINUTES_SEC
+            && timestamp < c + FIFTEEN_MINUTES_IN_MS
     }
 }
 
@@ -47,16 +47,14 @@ pub trait TimestampChecker {
 pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
     name: Bytes32,
     data_point_id: Bytes32,
-    msg_sender: &[u8],
+    msg_sender: &A::Address,
     access: &A,
     storage: &mut D,
 ) -> Result<(), Error> {
     ensure!(name != Bytes32::default(), Error::InvalidData)?;
     ensure!(data_point_id != Bytes32::default(), Error::InvalidData)?;
-    ensure!(
-        access.has_role(Role::NameSetter, msg_sender),
-        Error::AccessDenied
-    )?;
+    let role = access.find_role_by_string(A::NAME_SETTER_ROLE_NAME);
+    ensure!(access.has_role(&role, msg_sender), Error::AccessDenied)?;
 
     storage.store(
         keccak_packed(&[Token::FixedBytes(name.to_vec())]),
@@ -72,7 +70,7 @@ pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
 /// `timestamp` Data point timestamp
 pub fn read_with_data_point_id<D: Storage<DataPoint>, A: AccessControlRegistry, W: Whitelist>(
     data_point_id: &Bytes32,
-    msg_sender: &[u8],
+    msg_sender: &A::Address,
     d: &D,
     a: &A,
     w: &W,
@@ -96,7 +94,7 @@ pub fn read_with_name<
     W: Whitelist,
 >(
     name: Bytes32,
-    msg_sender: &[u8],
+    msg_sender: &A::Address,
     d: &D,
     h: &H,
     a: &A,
@@ -117,13 +115,14 @@ pub fn read_with_name<
 /// `reader` Reader address
 pub fn reader_can_read_data_point<A: AccessControlRegistry, W: Whitelist>(
     data_point_id: &Bytes32,
-    reader: &[u8],
+    reader: &A::Address,
     access: &A,
     whitelist: &W,
 ) -> bool {
+    let role = access.find_role_by_string(A::UNLIMITED_READER_ROLE_NAME);
     reader.is_empty()
-        || whitelist.user_is_whitelisted(data_point_id, reader)
-        || access.has_role(Role::UnlimitedReaderRole, reader)
+        || whitelist.user_is_whitelisted(data_point_id, reader.as_ref())
+        || access.has_role(&role, reader)
 }
 
 /// Updates the dAPI that is specified by the beacon IDs
