@@ -1,10 +1,12 @@
 mod abi;
+mod access;
 mod agg;
 mod beacon;
 mod datapoint;
 mod error;
 pub mod types;
 pub mod util;
+mod whitelist;
 
 pub use abi::*;
 pub use agg::Aggregator;
@@ -26,4 +28,8 @@ macro_rules! ensure {
             Ok(())
         }
     }};
+}
+
+pub trait Empty {
+    fn is_empty(&self) -> bool;
 }

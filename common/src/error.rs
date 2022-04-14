@@ -40,6 +40,9 @@ pub enum Error {
 pub enum WhitelistError {
     #[error("Does not extend expiration")]
     DoesNotExtendExpiration,
+    AccessDenied,
+    NameHashNotFound,
+    RoleDescriptionEmpty,
 }
 
 #[cfg(feature = "recovery")]
@@ -68,6 +71,9 @@ impl From<Error> for u32 {
             Error::InvalidSignature => 12,
             Error::UpdatedValueOutdated => 13,
             Error::WhiteListError(_) => 14,
+            Error::AccessDenied => 14,
+            Error::NameHashNotFound => 15,
+            Error::RoleDescriptionEmpty => 16,
         }
     }
 }
