@@ -1,4 +1,4 @@
-use crate::access::{AccessControlRegistry, Empty};
+use crate::access::AccessControlRegistry;
 use crate::whitelist::Whitelist;
 use crate::*;
 
@@ -68,7 +68,11 @@ pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
 /// `data_point_id` Data point ID
 /// `value` Data point value
 /// `timestamp` Data point timestamp
-pub fn read_with_data_point_id<D: Storage<DataPoint>, A: AccessControlRegistry, W: Whitelist>(
+pub fn read_with_data_point_id<
+    D: Storage<DataPoint>,
+    A: AccessControlRegistry,
+    W: Whitelist<Address = A::Address>,
+>(
     data_point_id: &Bytes32,
     msg_sender: &A::Address,
     d: &D,
@@ -91,7 +95,7 @@ pub fn read_with_name<
     D: Storage<DataPoint>,
     H: Storage<Bytes32>,
     A: AccessControlRegistry,
-    W: Whitelist,
+    W: Whitelist<Address = A::Address>,
 >(
     name: Bytes32,
     msg_sender: &A::Address,
@@ -113,7 +117,7 @@ pub fn read_with_name<
 /// @notice Returns if a reader can read the data point
 /// `data_point_id` Data point ID (or data point name hash)
 /// `reader` Reader address
-pub fn reader_can_read_data_point<A: AccessControlRegistry, W: Whitelist>(
+pub fn reader_can_read_data_point<A: AccessControlRegistry, W: Whitelist<Address = A::Address>>(
     data_point_id: &Bytes32,
     reader: &A::Address,
     access: &A,
@@ -121,7 +125,7 @@ pub fn reader_can_read_data_point<A: AccessControlRegistry, W: Whitelist>(
 ) -> bool {
     let role = access.find_role_by_string(A::UNLIMITED_READER_ROLE_NAME);
     reader.is_empty()
-        || whitelist.user_is_whitelisted(data_point_id, reader.as_ref())
+        || whitelist.user_is_whitelisted(data_point_id, reader)
         || access.has_role(&role, reader)
 }
 

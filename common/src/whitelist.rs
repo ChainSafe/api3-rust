@@ -1,4 +1,5 @@
 use crate::Bytes32;
+use crate::Empty;
 
 /// Trait that implements temporary and permanent whitelists for
 /// multiple services identified with a hash
@@ -14,8 +15,11 @@ use crate::Bytes32;
 /// inherited and its functions should be exposed with a sort of an
 /// authorization scheme.
 pub trait Whitelist {
+    /// The address type for the chain
+    type Address: AsRef<[u8]> + Empty;
+
     /// Returns if the user is whitelised to use the service
     /// `service_id` Service ID
     /// `user` User address
-    fn user_is_whitelisted(&self, service_id: &Bytes32, user: &[u8]) -> bool;
+    fn user_is_whitelisted(&self, service_id: &Bytes32, user: &Self::Address) -> bool;
 }

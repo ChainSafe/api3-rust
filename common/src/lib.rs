@@ -28,3 +28,7 @@ macro_rules! ensure {
         }
     }};
 }
+
+pub trait Empty {
+    fn is_empty(&self) -> bool;
+}

@@ -1,8 +1,4 @@
-use crate::{ensure, keccak_packed, Bytes32, Error, Token};
-
-pub trait Empty {
-    fn is_empty(&self) -> bool;
-}
+use crate::{ensure, keccak_packed, Bytes32, Empty, Error, Token};
 
 /// The access control registry interface in the solidity contract
 pub trait AccessControlRegistry {
