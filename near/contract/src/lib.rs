@@ -1,6 +1,6 @@
 #![allow(unused)]
 mod dapi_server;
-mod whitelist;
+mod near_whitelist;
 
 /// NEAR contract calls on the panic interface for errors
 #[macro_export]

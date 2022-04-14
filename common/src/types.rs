@@ -1,3 +1,4 @@
+use crate::Empty;
 use borsh::{self, BorshDeserialize, BorshSerialize};
 use derive_more::{
     Add, AddAssign, Display, Div, DivAssign, From, Into, Mul, MulAssign, Sub, SubAssign,
@@ -72,6 +73,18 @@ impl U256 {
 /// Address is an alias to H160, which is [u8;20]
 #[derive(Serialize, Deserialize)]
 pub struct Address(crate::Address);
+
+impl Empty for Address {
+    fn is_empty(&self) -> bool {
+        todo!();
+    }
+}
+
+impl AsRef<[u8]> for Address {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
 
 impl BorshDeserialize for Address {
     fn deserialize(bytes: &mut &[u8]) -> Result<Self, io::Error> {
