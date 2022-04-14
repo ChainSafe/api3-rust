@@ -1,4 +1,3 @@
-use crate::ensure;
 /// derived from Whitelist.sol
 ///
 /// @title Contract that implements temporary and permanent whitelists for
@@ -18,10 +17,11 @@ use near_sdk::BorshStorageKey;
 use near_sdk::{env, near_bindgen};
 use std::io;
 
+use crate::ensure;
 use api3_common::types::Address;
 use api3_common::types::U256;
 use api3_common::Bytes32;
-use api3_common::WhitelistError;
+use api3_common::Error;
 
 near_sdk::setup_alloc!();
 
@@ -82,7 +82,7 @@ impl Whitelist {
 
         ensure!(
             expiration_timestamp > whitelist_status.expiration_timestamp,
-            WhitelistError::DoesNotExtendExpiration
+            Error::DoesNotExtendExpiration
         );
 
         whitelist_status.expiration_timestamp = expiration_timestamp;

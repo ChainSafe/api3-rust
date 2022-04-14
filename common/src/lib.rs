@@ -13,7 +13,6 @@ pub use agg::Aggregator;
 pub use beacon::*;
 pub use datapoint::DataPoint;
 pub use error::Error;
-pub use error::WhitelistError;
 pub use util::*;
 
 pub type Bytes = Vec<u8>;

@@ -32,16 +32,13 @@ pub enum Error {
     InvalidSignature,
     #[error("Updated value outdated")]
     UpdatedValueOutdated,
-    #[error("Whitelist Error: {0}")]
-    WhiteListError(WhitelistError),
-}
-
-#[derive(Error, Debug)]
-pub enum WhitelistError {
     #[error("Does not extend expiration")]
     DoesNotExtendExpiration,
+    #[error("Access Denied")]
     AccessDenied,
+    #[error("NameHash Not Found")]
     NameHashNotFound,
+    #[error("Role description Empty")]
     RoleDescriptionEmpty,
 }
 
@@ -70,10 +67,10 @@ impl From<Error> for u32 {
             Error::InvalidTimestamp => 11,
             Error::InvalidSignature => 12,
             Error::UpdatedValueOutdated => 13,
-            Error::WhiteListError(_) => 14,
             Error::AccessDenied => 14,
             Error::NameHashNotFound => 15,
             Error::RoleDescriptionEmpty => 16,
+            Error::DoesNotExtendExpiration => 17,
         }
     }
 }

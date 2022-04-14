@@ -22,4 +22,19 @@ pub trait Whitelist {
     /// `service_id` Service ID
     /// `user` User address
     fn user_is_whitelisted(&self, service_id: &Bytes32, user: &Self::Address) -> bool;
+
+    /*
+    /// @notice Extends the expiration of the temporary whitelist of the user
+    /// for the service
+    /// @param serviceId Service ID
+    /// @param user User address
+    /// @param expirationTimestamp Timestamp at which the temporary whitelist
+    /// will expire
+    fn extend_whitelist_expiration(
+        &mut self,
+        service_id: &Bytes32,
+        user: &Address,
+        expiration_timestamp: u64,
+    );
+    */
 }
