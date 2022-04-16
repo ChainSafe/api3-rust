@@ -1,5 +1,6 @@
 mod abi;
 mod access;
+mod access_control_registry;
 mod agg;
 mod beacon;
 mod datapoint;

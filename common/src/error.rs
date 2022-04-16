@@ -40,6 +40,10 @@ pub enum Error {
     NameHashNotFound,
     #[error("Role description Empty")]
     RoleDescriptionEmpty,
+    #[error("Service ID zero")]
+    ServiceIdZero,
+    #[error("User address zero")]
+    UserAddressZero,
 }
 
 #[cfg(feature = "recovery")]
@@ -71,6 +75,8 @@ impl From<Error> for u32 {
             Error::NameHashNotFound => 15,
             Error::RoleDescriptionEmpty => 16,
             Error::DoesNotExtendExpiration => 17,
+            Error::ServiceIdZero => 18,
+            Error::UserAddressZero => 19,
         }
     }
 }
