@@ -34,7 +34,7 @@ pub enum StorageKeys {
     UserSetterIndefiniteWhitelist,
 }
 
-#[near_bindgen]
+//#[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, Default)]
 struct WhitelistStatus {
     expiration_timestamp: u64,

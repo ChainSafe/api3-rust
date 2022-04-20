@@ -29,6 +29,8 @@ use std::io;
     DivAssign,
     Mul,
     MulAssign,
+    Serialize,
+    Deserialize,
 )]
 pub struct U256(pub crate::abi::U256);
 
