@@ -1,3 +1,6 @@
+require "test-setup";
+
+console.log("In test.js");
 
 describe('Token', function () {
   let near;
@@ -8,6 +11,8 @@ describe('Token', function () {
     console.log('nearConfig', nearConfig);
     near = await nearlib.connect(nearConfig);
     accountId = nearConfig.contractName;
+    console.log("accountId: ", accountId);
+    console.log("nearConfig: ", nearConfig);
     contract = await near.loadContract(nearConfig.contractName, {
       viewMethods: ['get_num'],
       changeMethods: ['increment', 'decrement', 'reset'],

@@ -1,4 +1,3 @@
-
 (function () {
   let params = new URL(window.location).searchParams;
   let keyStore = new nearlib.keyStores.InMemoryKeyStore();

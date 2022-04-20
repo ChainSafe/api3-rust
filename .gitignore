@@ -6,4 +6,4 @@ target
 **/*.rs.bk
 **/node_modules
 **/test-ledger
-neardev/shared-test*
+**/neardev/*test*
