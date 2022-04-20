@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::ensure;
 use crate::Error;
 use crate::{Bytes32, Zero};

@@ -1,4 +1,3 @@
-use crate::Zero;
 use borsh::{self, BorshDeserialize, BorshSerialize};
 use derive_more::{
     Add, AddAssign, Display, Div, DivAssign, From, Into, Mul, MulAssign, Sub, SubAssign,
@@ -70,17 +69,4 @@ impl U256 {
     pub fn as_u32(&self) -> u32 {
         self.0.as_u32()
     }
-}
-
-#[test]
-fn serialization() {
-    let mut buffer = vec![];
-    let v = U256::from(u128::MAX);
-    dbg!(&v);
-    v.serialize(&mut buffer).unwrap();
-    dbg!(&buffer);
-
-    let uv = U256::try_from_slice(&mut buffer);
-    dbg!(&uv);
-    assert_eq!(v, uv.unwrap());
 }
