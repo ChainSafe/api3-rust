@@ -1,5 +1,5 @@
 use crate::Bytes32;
-use crate::Empty;
+use crate::Zero;
 
 pub trait AccessControl {}
 
@@ -15,7 +15,7 @@ pub trait RoleDriver {}
 /// roles and grant these to accounts. Each role has a description, and roles
 /// adminned by the same role cannot have the same description.
 pub trait AccessControlRegistry: RoleDriver + AccessControl {
-    type Address: AsRef<[u8]> + Empty;
+    type Address: AsRef<[u8]> + Zero;
 
     /// @notice Initializes the manager by initializing its root role and
     /// granting it to them

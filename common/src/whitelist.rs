@@ -1,7 +1,6 @@
 use crate::ensure;
-use crate::Bytes32;
-use crate::Empty;
 use crate::Error;
+use crate::{Bytes32, Zero};
 
 /// Trait that implements temporary and permanent whitelists for
 /// multiple services identified with a hash
@@ -18,7 +17,7 @@ use crate::Error;
 /// authorization scheme.
 pub trait Whitelist {
     /// The address type for the chain
-    type Address: AsRef<[u8]> + Empty;
+    type Address: AsRef<[u8]> + Zero;
 
     /// it is here since NEAR and solana uses slightly
     /// different U256
@@ -84,7 +83,7 @@ pub trait Whitelist {
 pub trait WhitelistRoles {}
 
 pub trait WhitelistRolesWithManager: WhitelistRoles {
-    type Address: AsRef<[u8]> + Empty;
+    type Address: AsRef<[u8]> + Zero;
     /// @dev Returns if the account has the whitelist expiration extender role
     /// or is the manager
     /// @param account Account address

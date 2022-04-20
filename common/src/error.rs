@@ -44,6 +44,10 @@ pub enum Error {
     ServiceIdZero,
     #[error("User address zero")]
     UserAddressZero,
+    #[error("Invalid Address")]
+    InvalidAddress,
+    #[error("Only Renounce roles for self")]
+    OnlyRenounceRolesForSelf,
 }
 
 #[cfg(feature = "recovery")]
@@ -77,6 +81,8 @@ impl From<Error> for u32 {
             Error::DoesNotExtendExpiration => 17,
             Error::ServiceIdZero => 18,
             Error::UserAddressZero => 19,
+            Error::InvalidAddress => 20,
+            Error::OnlyRenounceRolesForSelf => 21,
         }
     }
 }

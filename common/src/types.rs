@@ -1,4 +1,4 @@
-use crate::Empty;
+use crate::Zero;
 use borsh::{self, BorshDeserialize, BorshSerialize};
 use derive_more::{
     Add, AddAssign, Display, Div, DivAssign, From, Into, Mul, MulAssign, Sub, SubAssign,
@@ -80,8 +80,8 @@ impl Address {
     }
 }
 
-impl Empty for Address {
-    fn is_empty(&self) -> bool {
+impl Zero for Address {
+    fn is_zero(&self) -> bool {
         todo!();
     }
 }
