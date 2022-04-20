@@ -18,7 +18,7 @@ use near_sdk::{env, near_bindgen};
 use std::io;
 
 use crate::ensure;
-use api3_common::types::Address;
+use crate::Address;
 use api3_common::types::U256;
 use api3_common::Bytes32;
 use api3_common::Error;
@@ -265,7 +265,7 @@ mod tests {
         let context = get_context(to_valid_account("foo.near"));
         testing_env!(context.build());
         let whitelist = NearWhitelist::default();
-        let user = Address::from([0; 20]);
+        let user = Address::from("test.near");
         let service = [0; 32];
         assert!(!whitelist.user_is_whitelisted(&service, &user));
     }
@@ -277,7 +277,7 @@ mod tests {
         testing_env!(context.build());
         let mut whitelist = NearWhitelist::default();
 
-        let user = Address::from([0; 20]);
+        let user = Address::from("test.near");
         let service = [0; 32];
 
         assert!(!whitelist.user_is_whitelisted(&service, &user));
@@ -294,7 +294,7 @@ mod tests {
         testing_env!(context.build());
         let mut whitelist = NearWhitelist::default();
 
-        let user = Address::from([0; 20]);
+        let user = Address::from("test.near");
         let service = [0; 32];
 
         // whitelisted user
@@ -306,7 +306,7 @@ mod tests {
 
         let whitelist1 = NearWhitelist::try_from_slice(&mut buffer).unwrap();
         // NOT whitelisted user
-        let user1 = Address::from([1; 20]);
+        let user1 = Address::from("test1.near");
         assert!(whitelist1.user_is_whitelisted(&service, &user));
 
         assert!(!whitelist1.user_is_whitelisted(&service, &user1));

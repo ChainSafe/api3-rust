@@ -1,11 +1,11 @@
 use crate::ensure;
 use crate::error_panic;
+use crate::Address;
 use api3_common::decode;
 use api3_common::encode;
 use api3_common::encode_packed;
 use api3_common::keccak256;
 use api3_common::to_eth_signed_message_hash;
-use api3_common::types::Address;
 use api3_common::types::U256;
 use api3_common::util::median_wrapped_u256;
 use api3_common::Bytes;

@@ -70,50 +70,6 @@ impl U256 {
     }
 }
 
-/// Address is an alias to H160, which is [u8;20]
-#[derive(Serialize, Deserialize)]
-pub struct Address(crate::Address);
-
-impl Address {
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
-impl Zero for Address {
-    fn is_zero(&self) -> bool {
-        todo!();
-    }
-}
-
-impl AsRef<[u8]> for Address {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl BorshDeserialize for Address {
-    fn deserialize(bytes: &mut &[u8]) -> Result<Self, io::Error> {
-        let values: [u8; 20] = BorshDeserialize::deserialize(bytes)?;
-        Ok(Address(crate::Address::from(values)))
-    }
-}
-
-impl BorshSerialize for Address {
-    fn serialize<W>(&self, writer: &mut W) -> Result<(), io::Error>
-    where
-        W: io::Write,
-    {
-        BorshSerialize::serialize(&self.0 .0, writer)
-    }
-}
-
-impl From<[u8; 20]> for Address {
-    fn from(bytes: [u8; 20]) -> Self {
-        Address(crate::Address::from(bytes))
-    }
-}
-
 #[test]
 fn serialization() {
     let mut buffer = vec![];
