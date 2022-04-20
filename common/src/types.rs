@@ -74,6 +74,12 @@ impl U256 {
 #[derive(Serialize, Deserialize)]
 pub struct Address(crate::Address);
 
+impl Address {
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
 impl Empty for Address {
     fn is_empty(&self) -> bool {
         todo!();

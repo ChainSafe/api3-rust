@@ -76,12 +76,18 @@ impl DapiServer {
     /// @param signature Template ID, a timestamp and the response data signed
     /// by the Airnode address
     fn update_beacon_with_signed_data(
-        airnode: Address,
-        template_id: Bytes32,
+        &mut self,
+        airnode: &Address,
+        template_id: &Bytes32,
         timestamp: U256,
         data: Vec<u8>,
         signature: Vec<u8>,
     ) {
+        let message = Self::encode_signed_message_hash(&template_id, timestamp, &data);
+        ensure!(
+            self.verify(airnode.as_bytes(), &message, &signature),
+            Error::InvalidSignature
+        );
     }
 
     /// @notice Updates the dAPI that is specified by the beacon IDs
