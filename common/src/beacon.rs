@@ -252,7 +252,7 @@ pub fn derive_beacon_id(airnode: Bytes, template_id: Bytes32) -> Bytes32 {
 /// @dev Notice that `abi.encode()` is used over `abi.encodePacked()`
 /// @param beaconIds Beacon IDs
 /// @return dapiId dAPI ID
-fn derive_dapi_id(beacon_ids: &[Bytes32]) -> Bytes32 {
+pub fn derive_dapi_id(beacon_ids: &[Bytes32]) -> Bytes32 {
     let tokens: Vec<Token> = beacon_ids
         .iter()
         .map(|b| Token::FixedBytes(b.to_vec()))

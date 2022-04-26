@@ -4,7 +4,7 @@ mod whitelist;
 
 use crate::utils::{DatapointHashMap, DummySignatureManger, SolanaClock};
 use anchor_lang::{prelude::borsh::maybestd::collections::HashMap, prelude::*};
-use api3_common::{derive_beacon_id, ensure, process_beacon_update, Bytes32, DataPoint, Uint};
+use api3_common::{derive_beacon_id, ensure, process_beacon_update, DataPoint, Uint};
 
 declare_id!("FRoo7m8Sf6ZAirGgnn3KopQymDtujWx818kcnRxzi23b");
 
@@ -15,6 +15,9 @@ const ERROR_SIGNATURES_NOT_VALIDATED: u64 = 3u64;
 const ERROR_SIGNATURES_MORE_THAN_DATA: u64 = 4u64;
 const ERROR_NOT_ENOUGH_ACCOUNT: u64 = 5u64;
 const ERROR_INVALID_NAME_HASH: u64 = 6u64;
+const ERROR_DATA_LENGTH_NOT_MATCH: u64 = 7u64;
+const ERROR_INVALID_DERIVED_DAPI_ID_KEY: u64 = 8u64;
+const ERROR_INVALID_SYSTEM_PROGRAM_ID: u64 = 9u64;
 
 fn map_error(e: api3_common::Error) -> anchor_lang::error::Error {
     anchor_lang::error::Error::from(ProgramError::Custom(e.into()))
@@ -41,6 +44,7 @@ pub mod beacon_server {
             beacon_id == datapoint_key,
             Error::from(ProgramError::from(ERROR_INVALID_BEACON_ID_KEY))
         )?;
+        utils::check_sys_program(ctx.accounts.system_program.key)?;
 
         let timestamp = Uint::from(&timestamp);
         let mut s = DatapointHashMap::new(
@@ -63,6 +67,7 @@ pub mod beacon_server {
             !ctx.remaining_accounts.is_empty(),
             "must provide beacon accounts"
         );
+        utils::check_sys_program(ctx.accounts.system_program.key)?;
 
         let beacon_id_tuples = ctx
             .remaining_accounts
@@ -72,7 +77,8 @@ pub mod beacon_server {
             })
             .collect::<Result<Vec<(Pubkey, Account<WrappedDataPoint>)>>>()?;
 
-        utils::check_beacon_ids(&beacon_ids, &beacon_id_tuples)?;
+        let keys = beacon_id_tuples.iter().map(|a| a.0).collect::<Vec<_>>();
+        utils::check_beacon_ids(&beacon_ids, &keys, ctx.program_id)?;
         utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 
         // Step 2. Prepare the accounts
@@ -116,17 +122,19 @@ pub mod beacon_server {
         let sig_count = ensure_batch_signed(instruction_acc, &data)?;
         let sig_checker = DummySignatureManger::new(sig_count);
 
+        utils::check_sys_program(ctx.accounts.system_program.key)?;
+
         // Step 2. Check the beacon id accounts are correct
         let mut idx = 0usize;
-        let beacon_id_tuples = account_iter
+        let keys = account_iter
             .clone()
-            .map(|item| -> (Pubkey, Bytes32) {
-                let r = (*item.key, template_ids[idx]);
+            .map(|item| -> Pubkey {
                 idx += 1;
-                r
+                *item.key
             })
-            .collect::<Vec<(Pubkey, Bytes32)>>();
-        utils::check_beacon_ids_with_templates(&beacon_ids, &beacon_id_tuples)?;
+            .collect::<Vec<Pubkey>>();
+
+        utils::check_beacon_ids(&beacon_ids, &keys, ctx.program_id)?;
         utils::check_dapi_id(&datapoint_key, &beacon_ids)?;
 
         // Step 3. Extract and prepare the data for beacon ids from storage
@@ -180,7 +188,9 @@ pub mod beacon_server {
         let access = DummyAccessControl::default();
         let msg_sender = ctx.accounts.user.key.to_bytes();
 
+        utils::check_sys_program(ctx.accounts.system_program.key)?;
         utils::check_name_hash(&name, &name_hash)?;
+
         let mut storage = NameHashHashMap::new(vec![(name_hash, &mut ctx.accounts.hash)]);
         api3_common::set_name(
             name,

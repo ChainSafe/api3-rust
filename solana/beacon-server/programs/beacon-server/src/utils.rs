@@ -1,8 +1,11 @@
-use crate::{ERROR_INVALID_NAME_HASH, WrappedDataPoint, WrappedDataPointId};
+use crate::{ERROR_DATA_LENGTH_NOT_MATCH, ERROR_INVALID_BEACON_ID_KEY, ERROR_INVALID_DERIVED_DAPI_ID_KEY, ERROR_INVALID_NAME_HASH, ERROR_INVALID_SYSTEM_PROGRAM_ID, WrappedDataPoint, WrappedDataPointId};
 use anchor_lang::accounts::account::Account;
 use anchor_lang::prelude::borsh::maybestd::collections::HashMap;
 use anchor_lang::prelude::*;
 use api3_common::{ensure, Bytes32, DataPoint, keccak_packed, SignatureManger, Storage, TimestampChecker, Token};
+
+const DATAPOINT_SEED: &str = "datapoint";
+// const HASH_NAME_SEED: &str = "hashed-name";
 
 pub type NameHashAccountRef<'info> = Account<'info, WrappedDataPointId>;
 pub(crate) struct NameHashHashMap<'info, 'account> {
@@ -21,7 +24,7 @@ impl<'info, 'account> NameHashHashMap<'info, 'account> {
 
 impl<'info, 'account> Storage<Bytes32> for NameHashHashMap<'info, 'account> {
     fn get(&self, k: &Bytes32) -> Option<Bytes32> {
-        self.write.get(k).map(|a| a.datapoint_id.clone())
+        self.write.get(k).map(|a| a.datapoint_id)
     }
 
     fn store(&mut self, k: Bytes32, datapoint_id: Bytes32) {
@@ -113,27 +116,28 @@ impl SignatureManger for DummySignatureManger {
     }
 }
 
-pub(crate) fn derive_dapi_id(_beacon_ids: &[Bytes32]) -> Bytes32 {
-    Bytes32::default()
-}
-
 pub(crate) fn check_beacon_ids(
-    _beacon_ids: &[Bytes32],
-    _beacon_id_tuples: &[(Pubkey, Account<WrappedDataPoint>)],
+    beacon_ids: &[Bytes32],
+    pdas: &[Pubkey],
+    program_id: &Pubkey
 ) -> Result<()> {
-    Ok(())
-}
-
-pub(crate) fn check_beacon_ids_with_templates(
-    _beacon_ids: &[Bytes32],
-    _beacon_id_tuples: &[(Pubkey, Bytes32)],
-) -> Result<()> {
+    ensure!(beacon_ids.len() >= pdas.len(), Error::from(ProgramError::from(ERROR_DATA_LENGTH_NOT_MATCH)))?;
+    let diff = beacon_ids.len() - pdas.len();
+    for i in 0..pdas.len() {
+        ensure!(
+            derive_datapoint_pubkey(&beacon_ids[diff+i], program_id) == pdas[i],
+            Error::from(ProgramError::from(ERROR_INVALID_BEACON_ID_KEY))
+        )?;
+    }
     Ok(())
 }
 
 /// Checks the dapis_id passed as parameter is actually derived from beacon_ids.
-pub(crate) fn check_dapi_id(_dapi_id: &Bytes32, _beacon_ids: &[Bytes32]) -> Result<()> {
-    derive_dapi_id(_beacon_ids);
+pub(crate) fn check_dapi_id(dapi_id: &Bytes32, beacon_ids: &[Bytes32]) -> Result<()> {
+    ensure!(
+        *dapi_id == api3_common::derive_dapi_id(beacon_ids),
+        Error::from(ProgramError::from(ERROR_INVALID_DERIVED_DAPI_ID_KEY))
+    )?;
     Ok(())
 }
 
@@ -145,3 +149,26 @@ pub(crate) fn check_name_hash(name: &Bytes32, name_hash: &Bytes32) -> Result<()>
         Error::from(ProgramError::from(ERROR_INVALID_NAME_HASH))
     )
 }
+
+pub(crate) fn check_sys_program(program_id: &Pubkey) -> Result<()> {
+    ensure!(
+        *program_id == anchor_lang::solana_program::system_program::id(),
+        Error::from(ProgramError::from(ERROR_INVALID_SYSTEM_PROGRAM_ID))
+    )
+}
+
+fn derive_datapoint_pubkey(datapoint_key: &[u8], program_id: &Pubkey) -> Pubkey {
+    let (key, _) = Pubkey::find_program_address(
+        &[DATAPOINT_SEED.as_bytes(), datapoint_key],
+        program_id
+    );
+    key
+}
+
+// fn derive_hashname_pubkey(datapoint_key: &[u8], program_id: &Pubkey) -> Pubkey {
+//     let (key, _) = Pubkey::find_program_address(
+//         &[HASH_NAME_SEED.as_bytes(), datapoint_key],
+//         program_id
+//     );
+//     key
+// }
