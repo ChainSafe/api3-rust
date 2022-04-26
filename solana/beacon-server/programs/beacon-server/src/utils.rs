@@ -1,19 +1,45 @@
-use crate::WrappedDataPoint;
+use crate::{ERROR_INVALID_NAME_HASH, WrappedDataPoint, WrappedDataPointId};
 use anchor_lang::accounts::account::Account;
 use anchor_lang::prelude::borsh::maybestd::collections::HashMap;
 use anchor_lang::prelude::*;
-use api3_common::{Bytes32, DataPoint, SignatureManger, Storage, TimestampChecker};
+use api3_common::{ensure, Bytes32, DataPoint, keccak_packed, SignatureManger, Storage, TimestampChecker, Token};
 
-pub type AccountRef<'info> = Account<'info, WrappedDataPoint>;
+pub type NameHashAccountRef<'info> = Account<'info, WrappedDataPointId>;
+pub(crate) struct NameHashHashMap<'info, 'account> {
+    write: HashMap<Bytes32, &'account mut NameHashAccountRef<'info>>,
+}
 
-pub(crate) struct SolanaHashMap<'info, 'account> {
-    write: HashMap<Bytes32, &'account mut AccountRef<'info>>,
+impl<'info, 'account> NameHashHashMap<'info, 'account> {
+    pub fn new(accounts: Vec<(Bytes32, &'account mut NameHashAccountRef<'info>)>) -> Self {
+        let mut write = HashMap::new();
+        for (key, aref) in accounts {
+            write.insert(key, aref);
+        }
+        Self { write }
+    }
+}
+
+impl<'info, 'account> Storage<Bytes32> for NameHashHashMap<'info, 'account> {
+    fn get(&self, k: &Bytes32) -> Option<Bytes32> {
+        self.write.get(k).map(|a| a.datapoint_id.clone())
+    }
+
+    fn store(&mut self, k: Bytes32, datapoint_id: Bytes32) {
+        let a = self.write.get_mut(&k).expect("cannot load from datapoint");
+        (*a).datapoint_id = datapoint_id;
+        // panic!("datapoint id: {:?}", a.datapoint_id);
+    }
+}
+
+pub type DatapointAccountRef<'info> = Account<'info, WrappedDataPoint>;
+pub(crate) struct DatapointHashMap<'info, 'account> {
+    write: HashMap<Bytes32, &'account mut DatapointAccountRef<'info>>,
     read: HashMap<Bytes32, DataPoint>,
 }
 
-impl<'info, 'account> SolanaHashMap<'info, 'account> {
+impl<'info, 'account> DatapointHashMap<'info, 'account> {
     pub fn new(
-        accounts: Vec<(Bytes32, &'account mut AccountRef<'info>)>,
+        accounts: Vec<(Bytes32, &'account mut DatapointAccountRef<'info>)>,
         read: HashMap<Bytes32, DataPoint>,
     ) -> Self {
         let mut write = HashMap::new();
@@ -24,9 +50,8 @@ impl<'info, 'account> SolanaHashMap<'info, 'account> {
     }
 }
 
-impl<'info, 'account> Storage<DataPoint> for SolanaHashMap<'info, 'account> {
+impl<'info, 'account> Storage<DataPoint> for DatapointHashMap<'info, 'account> {
     fn get(&self, k: &Bytes32) -> Option<DataPoint> {
-        // let k = self.key(key);
         match self.read.get(k) {
             Some(d) => Some(d.clone()),
             None => self.write.get(k).map(|a| {
@@ -40,7 +65,6 @@ impl<'info, 'account> Storage<DataPoint> for SolanaHashMap<'info, 'account> {
     }
 
     fn store(&mut self, k: Bytes32, datapoint: DataPoint) {
-        // let k = self.key(&key);
         let a = self.write.get_mut(&k).expect("cannot load from datapoint");
         (*a).raw_datapoint = Vec::from(datapoint);
     }
@@ -111,4 +135,13 @@ pub(crate) fn check_beacon_ids_with_templates(
 pub(crate) fn check_dapi_id(_dapi_id: &Bytes32, _beacon_ids: &[Bytes32]) -> Result<()> {
     derive_dapi_id(_beacon_ids);
     Ok(())
+}
+
+/// Checks the dapis_id passed as parameter is actually derived from beacon_ids.
+pub(crate) fn check_name_hash(name: &Bytes32, name_hash: &Bytes32) -> Result<()> {
+    let derived_hash = keccak_packed(&[Token::FixedBytes(name.to_vec())]);
+    ensure!(
+        *name_hash == derived_hash,
+        Error::from(ProgramError::from(ERROR_INVALID_NAME_HASH))
+    )
 }

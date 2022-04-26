@@ -46,19 +46,19 @@ pub trait TimestampChecker {
 /// `data_point_id` Data point ID the name will point to
 pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
     name: Bytes32,
-    data_point_id: Bytes32,
+    datapoint_id: Bytes32,
     msg_sender: &A::Address,
     access: &A,
     storage: &mut D,
 ) -> Result<(), Error> {
     ensure!(name != Bytes32::default(), Error::InvalidData)?;
-    ensure!(data_point_id != Bytes32::default(), Error::InvalidData)?;
+    ensure!(datapoint_id != Bytes32::default(), Error::InvalidData)?;
     let role = access.find_static_role(StaticRole::NameSetterRole);
     ensure!(access.has_role(&role, msg_sender), Error::AccessDenied)?;
 
     storage.store(
         keccak_packed(&[Token::FixedBytes(name.to_vec())]),
-        data_point_id,
+        datapoint_id,
     );
 
     Ok(())
