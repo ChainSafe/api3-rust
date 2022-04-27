@@ -1,6 +1,6 @@
 console.log("in config.js");
 
-const CONTRACT_NAME = process.env.CONTRACT_NAME || 'lee-counter.testnet'; /* TODO: change this to your account */
+const CONTRACT_NAME = process.env.CONTRACT_NAME || 'app1.whitelist1.testnet'; /* TODO: change this to your account */
 console.log("contract name: ", CONTRACT_NAME);
 
 
