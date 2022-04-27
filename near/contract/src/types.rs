@@ -1,10 +1,31 @@
-use api3_common::Zero;
+//use api3_common::Zero;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::AccountId;
 use serde::{Deserialize, Serialize};
 use std::io;
+use uint::construct_uint;
 
-/// Address is an alias to H160, which is [u8;20]
+pub const BYTES32_ZERO: Bytes32 = [0u8; 32];
+
+/// Checks if the address is zero
+pub trait Zero {
+    fn is_zero(&self) -> bool;
+}
+
+impl Zero for Bytes32 {
+    fn is_zero(&self) -> bool {
+        (*self) == BYTES32_ZERO
+    }
+}
+
+/// u256 is 4 u64
+construct_uint! {
+    #[derive(BorshDeserialize, BorshSerialize, Serialize)]
+    pub struct U256(4);
+}
+
+pub type Bytes32 = [u8; 32];
+
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
 pub struct Address(AccountId);
 

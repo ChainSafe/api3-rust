@@ -1,10 +1,14 @@
 #![allow(unused)]
 
+pub use near_whitelist::NearWhitelistContract;
 pub use types::Address;
+pub use whitelist::Whitelist;
 
-mod dapi_server;
+//mod dapi_server;
+mod common;
 mod near_whitelist;
 mod types;
+mod whitelist;
 
 /// NEAR contract calls on the panic interface for errors
 #[macro_export]

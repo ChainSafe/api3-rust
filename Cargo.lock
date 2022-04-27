@@ -68,10 +68,11 @@ dependencies = [
 name = "api3-contract"
 version = "0.1.0"
 dependencies = [
- "api3-common",
  "near-sdk",
  "near-sdk-sim",
  "serde",
+ "thiserror",
+ "uint 0.9.3",
 ]
 
 [[package]]
