@@ -5,7 +5,7 @@ mod agg;
 mod beacon;
 mod datapoint;
 mod error;
-pub mod types;
+//pub mod types;
 pub mod util;
 mod whitelist;
 
