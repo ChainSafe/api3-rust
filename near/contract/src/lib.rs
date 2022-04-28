@@ -1,11 +1,12 @@
 #![allow(unused)]
 
+pub use error::Error;
 pub use near_whitelist::NearWhitelistContract;
 pub use types::Address;
 pub use whitelist::Whitelist;
 
 //mod dapi_server;
-mod common;
+mod error;
 mod near_whitelist;
 mod types;
 mod whitelist;

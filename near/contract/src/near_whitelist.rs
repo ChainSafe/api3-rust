@@ -17,11 +17,11 @@ use near_sdk::BorshStorageKey;
 use near_sdk::{env, near_bindgen};
 use std::io;
 
-use crate::common::Error;
 use crate::ensure;
 use crate::types::Address;
 use crate::types::Bytes32;
 use crate::types::U256;
+use crate::Error;
 use crate::Whitelist;
 
 near_sdk::setup_alloc!();

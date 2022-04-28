@@ -1,7 +1,7 @@
 #![allow(unused)]
-use crate::common::Error;
 use crate::ensure;
 use crate::types::{Bytes32, Zero};
+use crate::Error;
 
 /// Trait that implements temporary and permanent whitelists for
 /// multiple services identified with a hash
