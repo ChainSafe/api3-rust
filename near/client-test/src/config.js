@@ -1,11 +1,7 @@
-console.log("in config.js");
-
 const CONTRACT_NAME = process.env.CONTRACT_NAME || 'app1.whitelist1.testnet'; /* TODO: change this to your account */
-console.log("contract name: ", CONTRACT_NAME);
 
 
 function getConfig (env) {
-    console.log("env: ", env);
   switch (env) {
     case 'production':
     case 'mainnet':
@@ -43,7 +39,6 @@ function getConfig (env) {
       }
     case 'test':
     case 'ci':
-        console.log("here in here..");
       return {
         networkId: 'shared-test',
         nodeUrl: 'https://rpc.ci-testnet.near.org',

@@ -235,7 +235,7 @@ impl Whitelist for NearWhitelist {
     }
 
     fn contract_info(&self) -> String {
-        "This is a a NEAR whitelist contract implemented from the trait Whitelist".to_string()
+        "This is a a NEAR whitelist contract implemented from the trait Whitelist, just modified now".to_string()
     }
 }
 
