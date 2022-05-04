@@ -3,8 +3,9 @@
 pub use types::Address;
 
 mod dapi_server;
-mod near_whitelist;
+// mod near_whitelist;
 mod types;
+mod utils;
 
 /// NEAR contract calls on the panic interface for errors
 #[macro_export]

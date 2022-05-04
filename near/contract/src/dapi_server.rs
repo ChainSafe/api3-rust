@@ -1,7 +1,7 @@
 use crate::ensure;
 use crate::error_panic;
 use crate::Address;
-use api3_common::decode;
+use api3_common::{decode, derive_beacon_id, Uint};
 use api3_common::encode;
 use api3_common::encode_packed;
 use api3_common::keccak256;
@@ -13,9 +13,12 @@ use api3_common::Bytes32;
 use api3_common::Error;
 use api3_common::ParamType;
 use api3_common::Token;
+use api3_common::process_beacon_update;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
-use near_sdk::env;
+use near_sdk::{env, near_bindgen, init};
+use crate::types::NearDataPoint;
+use crate::utils::DatapointHashMap;
 
 /// @notice Unlimited reader role description
 const UNLIMITED_READER_ROLE_DESCRIPTION: &str = "Unlimited reader";
@@ -26,27 +29,17 @@ const NAME_SETTER_ROLE_DESCRIPTION: &str = "Name setter";
 const ONE_HOUR_IN_MS: u32 = 3_600_000;
 const FIFTEEN_MINUTES_IN_MS: u32 = 900_000;
 
-#[derive(BorshDeserialize, BorshSerialize)]
-struct DataPoint {
-    value: U256,
-    timestamp: u32,
-}
-
-impl DataPoint {
-    pub fn new(value: U256, timestamp: u32) -> Self {
-        DataPoint { value, timestamp }
-    }
-}
-
+#[near_bindgen]
 struct DapiServer {
     /// @notice Unlimited reader role
     unlimited_reader_role: Bytes32,
     /// @notice Name setter role
     name_setter_role: Bytes32,
-    data_points: LookupMap<Bytes32, DataPoint>,
-    name_hash_to_data_point_id: LookupMap<Bytes32, DataPoint>,
+    data_points: LookupMap<Bytes32, NearDataPoint>,
+    name_hash_to_data_point_id: LookupMap<Bytes32, NearDataPoint>,
 }
 
+#[near_bindgen]
 impl DapiServer {
     /// @dev Reverts if the timestamp is not valid
     /// @param timestamp Timestamp used in the signature
@@ -58,10 +51,11 @@ impl DapiServer {
     /// @param _adminRoleDescription Admin role description
     /// @param _manager Manager address
     /// TODO: learn more on solidity constructor
+    #[init]
     fn constructor() -> Self {
         Self {
-            unlimited_reader_role: todo!(), //keccak256
-            name_setter_role: todo!(),      // keccac
+            unlimited_reader_role: Bytes32::default(), //keccak256
+            name_setter_role: Bytes32::default(),      // keccac
             data_points: LookupMap::new(b'd'),
             name_hash_to_data_point_id: LookupMap::new(b'n'),
         }
@@ -77,17 +71,28 @@ impl DapiServer {
     /// by the Airnode address
     fn update_beacon_with_signed_data(
         &mut self,
-        airnode: &Address,
-        template_id: &Bytes32,
+        airnode: Address,
+        template_id: Bytes32,
         timestamp: U256,
         data: Vec<u8>,
         signature: Vec<u8>,
     ) {
-        let message = Self::encode_signed_message_hash(&template_id, timestamp, &data);
-        ensure!(
-            self.verify(airnode.as_bytes(), &message, &signature),
-            Error::InvalidSignature
-        );
+        // let message = Self::encode_signed_message_hash(&template_id, timestamp, &data);
+        // ensure!(
+        //     self.verify(airnode.as_bytes(), &message, &signature),
+        //     Error::InvalidSignature
+        // );
+        let mut s = DatapointHashMap::new(&mut self.data_points);
+        let beacon_id = derive_beacon_id(airnode.as_bytes().to_vec(), template_id);
+        process_beacon_update(&mut s, beacon_id, timestamp.to_u256(), data).unwrap();
+    }
+
+    #[cfg(test)]
+    fn get_data_point(
+        &self,
+        template_id: &Bytes32,
+    ) -> NearDataPoint {
+        self.data_points.get(template_id).unwrap_or(NearDataPoint::new(U256::from(0u32), 0))
     }
 
     /// @notice Updates the dAPI that is specified by the beacon IDs
@@ -121,7 +126,7 @@ impl DapiServer {
         }
         let updated_value: U256 = median_wrapped_u256(&values);
 
-        let data_point = DataPoint::new(updated_value, updated_timestamp);
+        let data_point = NearDataPoint::new(updated_value, updated_timestamp);
 
         self.data_points.insert(&dapi_id, &data_point);
         dapi_id
@@ -240,5 +245,45 @@ impl DapiServer {
     fn timestamp_is_valid(timestamp: U256) -> bool {
         timestamp + U256::from(ONE_HOUR_IN_MS) > U256::from(env::block_timestamp())
             && timestamp < U256::from(env::block_timestamp()) + U256::from(FIFTEEN_MINUTES_IN_MS)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use near_sdk::test_utils::{get_logs, VMContextBuilder};
+    use near_sdk::{testing_env, VMContext};
+    use near_sdk::json_types::ValidAccountId;
+    use near_sdk::MockedBlockchain;
+
+    fn get_context(is_view: bool) -> VMContext {
+        VMContextBuilder::new()
+            .signer_account_id(ValidAccountId::try_from("bob_near").unwrap())
+            .is_view(is_view)
+            .build()
+    }
+
+    #[test]
+    fn test() {
+        let context = get_context(false);
+        testing_env!(context);
+
+        let mut server = DapiServer::constructor();
+
+        let template_id = Bytes32::default();
+        let data = vec![1;32];
+        let timestamp = 123u32;
+        server.update_beacon_with_signed_data(
+            Address::from("sample.testnet"),
+            template_id.clone(),
+            U256::from(timestamp),
+            data.clone(),
+            vec![]
+        );
+
+        let beacon_id = derive_beacon_id(Address::from("sample.testnet").as_bytes().to_vec(), template_id);
+        let datapoint = server.get_data_point(&beacon_id);
+        assert_eq!(datapoint.timestamp, timestamp);
+        assert_eq!(datapoint.value.to_u256(), Uint::from_big_endian(&data));
     }
 }

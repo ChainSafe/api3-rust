@@ -4,6 +4,7 @@ use derive_more::{
 };
 use serde::{Deserialize, Serialize};
 use std::io;
+use crate::Uint;
 
 /// This needs to be wrapped here, otherwise
 /// There is no way for use to implement Borsh serde for U256 due to the fact
@@ -46,7 +47,7 @@ impl BorshSerialize for U256 {
         W: io::Write,
     {
         let mut v = [0u8; 32];
-        self.0.to_big_endian(&mut v);
+        self.to_big_endian(&mut v);
         BorshSerialize::serialize(&v, writer)
     }
 }
@@ -68,5 +69,12 @@ impl_u256!(i32; i64; isize; i128; u32; u64; usize; u128;);
 impl U256 {
     pub fn as_u32(&self) -> u32 {
         self.0.as_u32()
+    }
+    pub fn to_big_endian(&self, bytes: &mut [u8]) { self.0.to_big_endian(bytes); }
+    pub fn from_big_endian(bytes: &[u8]) -> Self { Self(crate::abi::U256::from_big_endian(bytes)) }
+    pub fn to_u256(&self) -> Uint {
+        let mut v = [0u8; 32];
+        self.to_big_endian(&mut v);
+        Uint::from_big_endian(&v)
     }
 }
