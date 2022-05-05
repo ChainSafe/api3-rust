@@ -65,16 +65,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "api3-contract"
-version = "0.1.0"
-dependencies = [
- "api3-common",
- "near-sdk",
- "near-sdk-sim",
- "serde",
-]
-
-[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -747,6 +737,16 @@ dependencies = [
  "rand_core 0.5.1",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "dapi-server"
+version = "0.1.0"
+dependencies = [
+ "ed25519-dalek",
+ "near-sdk",
+ "near-sdk-sim",
+ "serde",
 ]
 
 [[package]]

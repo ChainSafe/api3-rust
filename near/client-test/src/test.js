@@ -1,44 +1,36 @@
-require "test-setup";
+const { Near, Account, Contract } = nearAPI;
 
-console.log("In test.js");
-
-describe('Token', function () {
-  let near;
+describe("Token", function () {
   let contract;
-  let accountId;
+  jest.setTimeout(20000);
 
   beforeAll(async function () {
-    console.log('nearConfig', nearConfig);
-    near = await nearlib.connect(nearConfig);
-    accountId = nearConfig.contractName;
-    console.log("accountId: ", accountId);
-    console.log("nearConfig: ", nearConfig);
-    contract = await near.loadContract(nearConfig.contractName, {
-      viewMethods: ['get_num'],
-      changeMethods: ['increment', 'decrement', 'reset'],
-      sender: accountId
+    const near = await new Near(nearConfig);
+    const user = await new Account(near.connection, nearConfig.contractName);
+    contract = await new Contract(user, nearConfig.contractName, {
+      viewMethods: ["get_num"],
+      changeMethods: ["increment", "decrement", "reset"],
     });
   });
 
-  describe('counter', function () {
-    it('can be incremented', async function () {
-      const startCounter = await contract.get_num();
-      await contract.increment();
-      const endCounter = await contract.get_num();
+  describe("counter", function () {
+    it("can be incremented", async function () {
+      const startCounter = await contract.get_num({ args: {} });
+      await contract.increment({ args: {} });
+      const endCounter = await contract.get_num({ args: {} });
       expect(endCounter).toEqual(startCounter + 1);
     });
-    it('can be decremented', async function () {
-      await contract.increment();
-      const startCounter = await contract.get_num();
-      await contract.decrement();
-      const endCounter = await contract.get_num();
+    it("can be decremented", async function () {
+      await contract.increment({ args: {} });
+      const startCounter = await contract.get_num({ args: {} });
+      await contract.decrement({ args: {} });
+      const endCounter = await contract.get_num({ args: {} });
       expect(endCounter).toEqual(startCounter - 1);
     });
-    it('can be reset', async function () {
-      await contract.increment();
-      const startCounter = await contract.get_num();
-      await contract.reset();
-      const endCounter = await contract.get_num();
+    it("can be reset", async function () {
+      await contract.increment({ args: {} });
+      await contract.reset({ args: {} });
+      const endCounter = await contract.get_num({ args: {} });
       expect(endCounter).toEqual(0);
     });
   });

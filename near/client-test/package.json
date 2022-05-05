@@ -16,7 +16,8 @@
     "start:dev": "env-cmd -f ./neardev/dev-account.env parcel src/index.html",
     "test:cargo": "cd ../contract && cargo test -- --nocapture",
     "test": "yarn build && yarn test:cargo && jest",
-    "clean": "rm -rf node_modules src/pkg client/pkg out dist"
+    "clean": "rm -rf node_modules src/pkg client/pkg out dist",
+    "jest": "jest"
   },
   "devDependencies": {
     "env-cmd": "^10.1.0",
@@ -28,7 +29,6 @@
     "parcel-bundler": "~1.12.5"
   },
   "jest": {
-    "testEnvironment": "near-cli/test_environment"
   },
   "dependencies": {
     "near-api-js": "^0.43.1",
