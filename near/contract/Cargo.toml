@@ -9,8 +9,9 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = "3.1.0"
 serde = { version = "1"}
-#api3-common = { path = "../../common" }
-ed25519-dalek = "1.0.1"
+api3-common = { path = "../../common" }
+ed25519-dalek = { version = "1.0.1", default-features = false, features = ["std"] }
+hex = "0.4.3"
 
 [dev-dependencies]
 near-sdk-sim = "3.1.0"
