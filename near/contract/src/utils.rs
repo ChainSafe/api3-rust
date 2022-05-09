@@ -1,34 +1,107 @@
 use crate::types::{Address, NearDataPoint};
-use api3_common::{AccessControlRegistry, Bytes32, DataPoint, Error, keccak_packed, SignatureManger, Storage, TimestampChecker};
+use api3_common::abi::{Token, U256};
+use api3_common::{
+    keccak_packed, AccessControlRegistry, Bytes32, DataPoint, Error, SignatureManger, Storage,
+    TimestampChecker, Whitelist,
+};
 use ed25519_dalek::Verifier;
 use near_sdk::collections::LookupMap;
-use api3_common::abi::Token;
+
+/// Read write privilege
+enum ReadWrite<'a, T> {
+    ReadOnly(&'a T),
+    Write(&'a mut T),
+}
 
 /// The utility struct for handling Near storage so that
 /// we can use the code in `api3_common` for all the processing
 pub(crate) struct DatapointHashMap<'account> {
-    map: &'account mut LookupMap<Bytes32, NearDataPoint>,
+    map: ReadWrite<'account, LookupMap<Bytes32, NearDataPoint>>,
 }
 
 impl<'account> DatapointHashMap<'account> {
-    pub fn new(map: &'account mut LookupMap<Bytes32, NearDataPoint>) -> Self {
-        Self { map }
+    pub fn requires_write(map: &'account mut LookupMap<Bytes32, NearDataPoint>) -> Self {
+        Self {
+            map: ReadWrite::Write(map),
+        }
+    }
+
+    pub fn read_only(map: &'account LookupMap<Bytes32, NearDataPoint>) -> Self {
+        Self {
+            map: ReadWrite::ReadOnly(map),
+        }
     }
 }
 
 impl<'account> Storage<DataPoint> for DatapointHashMap<'account> {
     fn get(&self, k: &Bytes32) -> Option<DataPoint> {
-        match self.map.get(k) {
-            Some(d) => Some(d.clone().into()),
-            None => Some(DataPoint::default()),
+        match &self.map {
+            ReadWrite::ReadOnly(a) => match (*a).get(k) {
+                Some(d) => Some(d.clone().into()),
+                None => Some(DataPoint::default()),
+            },
+            ReadWrite::Write(a) => match (*a).get(k) {
+                Some(d) => Some(d.clone().into()),
+                None => Some(DataPoint::default()),
+            },
         }
     }
 
     fn store(&mut self, k: Bytes32, datapoint: DataPoint) {
-        if self.map.contains_key(&k) {
-            self.map.remove(&k);
+        let m = match &mut self.map {
+            ReadWrite::ReadOnly(_) => panic!("wrong privilege"),
+            ReadWrite::Write(m) => m,
+        };
+        if (*m).contains_key(&k) {
+            (*m).remove(&k);
         }
-        self.map.insert(&k, &NearDataPoint::from(datapoint));
+        (*m).insert(&k, &NearDataPoint::from(datapoint));
+    }
+}
+
+/// The utility struct for handling Near storage so that
+/// we can use the code in `api3_common` for all the processing
+pub(crate) struct Bytes32HashMap<'account> {
+    map: ReadWrite<'account, LookupMap<Bytes32, Bytes32>>,
+}
+
+impl<'account> Bytes32HashMap<'account> {
+    pub fn requires_write(map: &'account mut LookupMap<Bytes32, Bytes32>) -> Self {
+        Self {
+            map: ReadWrite::Write(map),
+        }
+    }
+
+    pub fn read_only(map: &'account LookupMap<Bytes32, Bytes32>) -> Self {
+        Self {
+            map: ReadWrite::ReadOnly(map),
+        }
+    }
+}
+
+impl<'account> Storage<Bytes32> for Bytes32HashMap<'account> {
+    fn get(&self, k: &Bytes32) -> Option<Bytes32> {
+        match &self.map {
+            ReadWrite::ReadOnly(a) => match (*a).get(k) {
+                Some(d) => Some(d.clone().into()),
+                None => None,
+            },
+            ReadWrite::Write(a) => match (*a).get(k) {
+                Some(d) => Some(d.clone().into()),
+                None => None,
+            },
+        }
+    }
+
+    fn store(&mut self, k: Bytes32, data: Bytes32) {
+        let m = match &mut self.map {
+            ReadWrite::ReadOnly(_) => panic!("wrong privilege"),
+            ReadWrite::Write(m) => m,
+        };
+        if (*m).contains_key(&k) {
+            (*m).remove(&k);
+        }
+        (*m).insert(&k, &data);
     }
 }
 
@@ -71,32 +144,51 @@ pub(crate) fn msg_sender() -> Address {
     Address(v)
 }
 
-pub(crate) struct NearAccessControlRegistry<'account> {
+pub(crate) struct NearAccessControlRegistry<'a> {
     manager: Address,
     admin_role_description: String,
-    role_membership: &'account mut LookupMap<Bytes32, bool>,
-    role_admin: &'account mut LookupMap<Bytes32, Address>,
+    role_membership: ReadWrite<'a, LookupMap<Bytes32, bool>>,
+    role_admin: ReadWrite<'a, LookupMap<Bytes32, Address>>,
 }
 
-impl <'a> NearAccessControlRegistry<'a> {
-    pub fn new(
+impl<'a> NearAccessControlRegistry<'a> {
+    pub fn requires_write(
         manager: Address,
         admin_role_description: String,
         role_membership: &'a mut LookupMap<Bytes32, bool>,
         role_admin: &'a mut LookupMap<Bytes32, Address>,
     ) -> Self {
-        Self { manager, admin_role_description, role_membership, role_admin }
+        Self {
+            manager,
+            admin_role_description,
+            role_membership: ReadWrite::Write(role_membership),
+            role_admin: ReadWrite::Write(role_admin),
+        }
+    }
+
+    pub fn read_only(
+        manager: Address,
+        admin_role_description: String,
+        role_membership: &'a LookupMap<Bytes32, bool>,
+        role_admin: &'a LookupMap<Bytes32, Address>,
+    ) -> Self {
+        Self {
+            manager,
+            admin_role_description,
+            role_membership: ReadWrite::ReadOnly(role_membership),
+            role_admin: ReadWrite::ReadOnly(role_admin),
+        }
     }
 
     fn hash_membership(role: &Bytes32, who: &Address) -> Bytes32 {
         keccak_packed(&[
             Token::FixedBytes(role.to_vec()),
-            Token::FixedBytes(who.as_ref().to_vec())
+            Token::FixedBytes(who.as_ref().to_vec()),
         ])
     }
 }
 
-impl <'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
+impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
     type Address = Address;
 
     fn manager(&self) -> &Self::Address {
@@ -109,23 +201,38 @@ impl <'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
 
     fn has_role(&self, role: &Bytes32, who: &Self::Address) -> bool {
         let hash = Self::hash_membership(role, who);
-        self.role_membership.contains_key(&hash)
+        match &self.role_membership {
+            ReadWrite::ReadOnly(m) => m.contains_key(&hash),
+            ReadWrite::Write(m) => m.contains_key(&hash),
+        }
     }
 
     fn grant_role(&mut self, role: &Bytes32, who: &Self::Address) -> Result<(), Error> {
         let hash = Self::hash_membership(role, who);
-        self.role_membership.remove(&hash);
-        self.role_membership.insert(&hash, &true);
+        match &mut self.role_membership {
+            ReadWrite::ReadOnly(_) => panic!("wrong privilege"),
+            ReadWrite::Write(m) => {
+                (*m).remove(&hash);
+                (*m).insert(&hash, &true);
+            }
+        };
         Ok(())
     }
 
     fn get_role_admin(&self, role: &Bytes32) -> Option<Bytes32> {
-        self.role_admin.get(role).map(|a| { Bytes32::from(a) })
+        match &self.role_admin {
+            ReadWrite::ReadOnly(a) => (*a).get(role).map(|a| Bytes32::from(a)),
+            ReadWrite::Write(a) => (*a).get(role).map(|a| Bytes32::from(a)),
+        }
     }
 
     fn set_role_admin(&mut self, role: &Bytes32, role_admin: Bytes32) -> Result<(), Error> {
-        self.role_admin.remove(role);
-        self.role_admin.insert(role, &Address(role_admin));
+        let a = match &mut self.role_admin {
+            ReadWrite::ReadOnly(_) => panic!("wrong privilege"),
+            ReadWrite::Write(a) => a,
+        };
+        (*a).remove(role);
+        (*a).insert(role, &Address(role_admin));
         Ok(())
     }
 
@@ -133,8 +240,68 @@ impl <'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
         let sender = msg_sender();
         api3_common::ensure!(*account == sender, Error::NotAuthorized)?;
         let hash = Self::hash_membership(role, account);
-        self.role_membership.remove(&hash);
+
+        let m = match &mut self.role_membership {
+            ReadWrite::ReadOnly(_) => panic!("wrong privilege"),
+            ReadWrite::Write(m) => m,
+        };
+        (*m).remove(&hash);
         Ok(())
+    }
+}
+
+/// Near whitelist implementation
+/// Currently a dummy implementation
+pub(crate) struct NearWhitelist {}
+
+impl NearWhitelist {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Whitelist for NearWhitelist {
+    type Address = Address;
+    type U256 = U256;
+
+    fn user_is_whitelisted(&self, _service_id: &Bytes32, _user: &Self::Address) -> bool {
+        true
+    }
+
+    fn extend_whitelist_expiration(
+        &mut self,
+        _service_id: &Bytes32,
+        _user: &Self::Address,
+        _expiration_timestamp: u64,
+    ) {
+        todo!()
+    }
+
+    fn set_whitelist_expiration(
+        &mut self,
+        _service_id: &Bytes32,
+        _user: &Self::Address,
+        _expiration_timestamp: u64,
+    ) {
+        todo!()
+    }
+
+    fn set_indefinite_whitelist_status(
+        &mut self,
+        _service_id: &Bytes32,
+        _user: &Self::Address,
+        _status: bool,
+    ) -> Self::U256 {
+        todo!()
+    }
+
+    fn revoke_indefinite_whitelist_status(
+        &mut self,
+        _service_id: &Bytes32,
+        _user: &Self::Address,
+        _setter: &Self::Address,
+    ) -> (bool, Self::U256) {
+        todo!()
     }
 }
 

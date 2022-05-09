@@ -64,8 +64,6 @@ pub fn set_name<D: Storage<Bytes32>, A: AccessControlRegistry>(
 
 /// Reads the data point with ID
 /// `data_point_id` Data point ID
-/// `value` Data point value
-/// `timestamp` Data point timestamp
 pub fn read_with_data_point_id<
     D: Storage<DataPoint>,
     A: AccessControlRegistry,

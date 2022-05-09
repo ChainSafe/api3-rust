@@ -4,12 +4,17 @@ const nearAPI = require("near-api-js");
 const { connect, KeyPair, keyStores, providers } = require("near-api-js");
 const path = require("path");
 const { base64 } = require("ethers/lib/utils");
+const { assert } = require("console");
 const homedir = require("os").homedir();
 const CREDENTIALS_DIR = ".near-credentials";
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
+
+// DEFINE THESE
 const accountName = "mocha-test.testnet";
 const contractAccount = "test-api3.testnet";
+const isInitialized = false;
+
 const config = {
   keyStore,
   networkId: "testnet",
@@ -48,32 +53,47 @@ describe('Token', function () {
     const key = `${account.connection.signer.keyStore.keyDir}/testnet/${account.accountId}.json`;
     const data = JSON.parse(fs.readFileSync(key));
     keyPair = nearAPI.KeyPair.fromString(data.private_key);
-  });
 
-  describe('initialize', function () {
-    it('works', async function () {
+    if (!isInitialized) {
       const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
       await contract.initialize(
         {
           args: { }
         }
       );
-    });
+    }
   });
 
-  // describe('Access', function () {
-  //   it('grant role', async function () {
-  //     const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
-  //     const newKey = KeyPair.fromRandom("ed25519");
-  //     await contract.grant_role(
-  //       {
-  //         args: {
+  describe('Access', function () {
+    it('has role', async function () {
+      const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
+      const newKey = KeyPair.fromRandom("ed25519");
+      const newPubKey = toBuffer(newKey.getPublicKey().data);
+      // await contract.grant_role(
+      //   {
+      //     args: {
 
-  //         }
-  //       }
-  //     );
-  //   });
-  // });
+      //     }
+      //   }
+      // );
+      const r = await contract.has_role(
+        {
+          role: [...bufferU64BE(0)],
+          who: [...pubKeyBuf]
+        }
+      );
+      expect(r).toEqual(true);
+
+      expect(
+        await contract.has_role(
+          {
+            role: [...bufferU64BE(0)],
+            who: [...newPubKey]
+          }
+        )
+      ).toEqual(false);
+    });
+  });
 
   describe('updateBeaconWithSignedData', function () {
     it('works', async function () {
