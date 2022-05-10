@@ -46,3 +46,8 @@ RUN export BROWSER="" && rustup update && rustup default nightly && solana-insta
 RUN cd tmp && anchor init dummy && cd dummy && anchor build
 
 RUN chown -R dev /home/dev/.cargo /home/dev/.config /home/dev/.local /home/dev/.cache
+
+WORKDIR $HOME
+COPY . .
+
+RUN cd $HOME/solana/beacon-server && anchor build

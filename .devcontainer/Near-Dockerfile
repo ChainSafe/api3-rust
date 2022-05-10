@@ -1,0 +1,29 @@
+# using 2 build step
+FROM rust:1.60.0-slim-bullseye as build
+
+RUN apt-get update && apt-get install -y build-essential libssl-dev pkg-config git curl
+
+RUN useradd -m dev
+
+ENV NODE_VERSION="v18.0.0"
+ENV HOME="/home/dev"
+ENV PATH="${HOME}/.nvm/versions/node/${NODE_VERSION}/bin:${PATH}"
+
+RUN cargo install wasm-pack && \
+    rustup target add wasm32-unknown-unknown
+
+# Install npm, yarn and near-cli
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.2/install.sh | bash
+
+ENV NVM_DIR="${HOME}/.nvm"
+RUN . $NVM_DIR/nvm.sh && \
+    nvm install ${NODE_VERSION} && \
+    nvm use ${NODE_VERSION} && \
+    nvm alias default node  && \
+    npm install -g yarn && \
+    npm install -g near-cli
+
+WORKDIR $HOME
+COPY . .
+RUN cd $HOME/near/client-test && ./rebuild_contract.sh && ./run_all.sh
+

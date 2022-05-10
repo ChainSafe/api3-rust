@@ -18,11 +18,11 @@ use near_sdk::{env, near_bindgen};
 use std::io;
 
 use crate::ensure;
-use crate::Address;
-use api3_common::types::U256;
-use api3_common::Bytes32;
-use api3_common::Error;
-use api3_common::Whitelist;
+use crate::types::Address;
+use crate::types::Bytes32;
+use crate::types::U256;
+use crate::Error;
+use crate::Whitelist;
 
 near_sdk::setup_alloc!();
 
@@ -34,7 +34,6 @@ pub enum StorageKeys {
     UserSetterIndefiniteWhitelist,
 }
 
-//#[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, Default)]
 struct WhitelistStatus {
     expiration_timestamp: u64,
@@ -44,7 +43,7 @@ struct WhitelistStatus {
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
-struct NearWhitelist {
+pub struct NearWhitelist {
     service_id_to_user_to_whitelist_status: LookupMap<Bytes32, LookupMap<Address, WhitelistStatus>>,
     service_id_to_user_to_setter_to_indefinite_whitelist_status:
         LookupMap<Bytes32, LookupMap<Address, LookupMap<Address, bool>>>,
@@ -233,6 +232,10 @@ impl Whitelist for NearWhitelist {
         } else {
             false
         }
+    }
+
+    fn contract_info(&self) -> String {
+        "This is a a NEAR whitelist contract implemented from the trait Whitelist, just modified now".to_string()
     }
 }
 
