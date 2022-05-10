@@ -2,11 +2,11 @@
 
 mod types;
 mod utils;
+mod whitelist;
 
 use crate::types::{Address, NearDataPoint};
 use crate::utils::{
-    msg_sender, Bytes32HashMap, DatapointHashMap, NearAccessControlRegistry, NearClock,
-    NearWhitelist, SignatureVerify,
+    msg_sender, Bytes32HashMap, DatapointHashMap, NearAccessControlRegistry, NearClock, SignatureVerify,
 };
 use api3_common::abi::{
     decode, encode, encode_packed, keccak256, to_eth_signed_message_hash, ParamType, Token, Uint,
@@ -20,6 +20,7 @@ use api3_common::{
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::{env, init, near_bindgen};
+use crate::whitelist::{NearWhitelist, WhitelistStatus};
 
 near_sdk::setup_alloc!();
 
@@ -48,7 +49,8 @@ pub struct DapiServer {
     role_membership: LookupMap<Bytes32, bool>,
     role_admin: LookupMap<Bytes32, Address>,
 
-    // TODO: Whitelist related storage
+    service_id_to_user_to_whitelist_status: LookupMap<Bytes32, WhitelistStatus>,
+    service_id_to_user_to_setter_to_indefinite_whitelist_status: LookupMap<Bytes32, bool>,
 }
 
 impl Default for DapiServer {
@@ -57,9 +59,11 @@ impl Default for DapiServer {
         let name_hash_to_data_point_id = LookupMap::new(b'n');
 
         let manager = Address(Bytes32::default());
-        let mut role_membership = LookupMap::new(b'm');
-        let mut role_admin = LookupMap::new(b'a');
+        let role_membership = LookupMap::new(b'm');
+        let role_admin = LookupMap::new(b'a');
 
+        let service_id_to_user_to_whitelist_status = LookupMap::new(b's');
+        let service_id_to_user_to_setter_to_indefinite_whitelist_status = LookupMap::new(b'b');
         Self {
             initialized: false,
             data_points,
@@ -70,6 +74,8 @@ impl Default for DapiServer {
             admin_role_description: String::from("admin role"),
             role_membership,
             role_admin,
+            service_id_to_user_to_whitelist_status,
+            service_id_to_user_to_setter_to_indefinite_whitelist_status
         }
     }
 }
@@ -267,7 +273,7 @@ impl DapiServer {
             &self.role_membership,
             &self.role_admin,
         );
-        let whitelist = NearWhitelist::new();
+        let whitelist = NearWhitelist::read_only(&access, &self.service_id_to_user_to_whitelist_status, &self.service_id_to_user_to_setter_to_indefinite_whitelist_status);
 
         api3_common::read_with_data_point_id(
             &data_point_id,
@@ -297,8 +303,7 @@ impl DapiServer {
             &self.role_membership,
             &self.role_admin,
         );
-        let whitelist = NearWhitelist::new();
-
+        let whitelist = NearWhitelist::read_only(&access, &self.service_id_to_user_to_whitelist_status, &self.service_id_to_user_to_setter_to_indefinite_whitelist_status);
         api3_common::read_with_name(name, &msg_sender(), &dp_s, &nh_s, &access, &whitelist)
             .map(|(a, n)| {
                 let mut v = [0u8; 32];
@@ -318,7 +323,7 @@ impl DapiServer {
             &self.role_membership,
             &self.role_admin,
         );
-        let whitelist = NearWhitelist::new();
+        let whitelist = NearWhitelist::read_only(&access, &self.service_id_to_user_to_whitelist_status, &self.service_id_to_user_to_setter_to_indefinite_whitelist_status);
         let reader = Address(reader);
         api3_common::reader_can_read_data_point(&data_point_id, &reader, &access, &whitelist)
     }

@@ -13,7 +13,7 @@ pub use beacon::*;
 pub use datapoint::DataPoint;
 pub use error::Error;
 pub use util::*;
-pub use whitelist::Whitelist;
+pub use whitelist::*;
 
 pub type Bytes = Vec<u8>;
 pub type Bytes32 = [u8; 32];

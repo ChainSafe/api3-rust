@@ -7,19 +7,26 @@ pub enum StaticRole {
     NameSetterRole,
 }
 
-/// The access control registry interface in the solidity contract
-pub trait AccessControlRegistry {
-    /// The address type for the chain
+pub trait AccessControlRegistryAdminnedWithManager {
     type Address: AsRef<[u8]> + Zero + PartialEq;
-    /// Default admin role, align with Openzepplin's definition
-    const DEFAULT_ADMIN_ROLE: Bytes32 = [0; 32];
-    const NAME_SETTER_ROLE_DESCRIPTION: &'static str = "Name setter";
-    const UNLIMITED_READER_ROLE_DESCRIPTION: &'static str = "Unlimited reader";
 
     /// Get the manager of this registry
     fn manager(&self) -> &Self::Address;
     /// Admin role description
     fn admin_role_description(&self) -> String;
+    /// Admin role description hash
+    fn admin_role_description_hash(&self) -> Bytes32;
+    /// Admin role
+    fn admin_role(&self) -> Bytes32;
+}
+
+/// The access control registry interface in the solidity contract
+pub trait AccessControlRegistry: AccessControlRegistryAdminnedWithManager {
+    /// Default admin role, align with Openzepplin's definition
+    const DEFAULT_ADMIN_ROLE: Bytes32 = [0; 32];
+    const NAME_SETTER_ROLE_DESCRIPTION: &'static str = "Name setter";
+    const UNLIMITED_READER_ROLE_DESCRIPTION: &'static str = "Unlimited reader";
+
     /// Find the role by its name. Not in the original solidity contract
     /// Just for making it work in Rust
     fn find_static_role(&self, role: StaticRole) -> Bytes32 {

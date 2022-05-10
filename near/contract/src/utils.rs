@@ -1,14 +1,11 @@
 use crate::types::{Address, NearDataPoint};
 use api3_common::abi::{Token, U256};
-use api3_common::{
-    keccak_packed, AccessControlRegistry, Bytes32, DataPoint, Error, SignatureManger, Storage,
-    TimestampChecker, Whitelist,
-};
+use api3_common::{keccak_packed, AccessControlRegistry, Bytes32, DataPoint, Error, SignatureManger, Storage, TimestampChecker, Whitelist, AccessControlRegistryAdminnedWithManager, RoleDeriver};
 use ed25519_dalek::Verifier;
 use near_sdk::collections::LookupMap;
 
 /// Read write privilege
-enum ReadWrite<'a, T> {
+pub(crate) enum ReadWrite<'a, T> {
     ReadOnly(&'a T),
     Write(&'a mut T),
 }
@@ -188,7 +185,7 @@ impl<'a> NearAccessControlRegistry<'a> {
     }
 }
 
-impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
+impl <'a> AccessControlRegistryAdminnedWithManager for NearAccessControlRegistry<'a> {
     type Address = Address;
 
     fn manager(&self) -> &Self::Address {
@@ -199,6 +196,19 @@ impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
         self.admin_role_description.clone()
     }
 
+    fn admin_role_description_hash(&self) -> Bytes32 {
+        keccak_packed(&[Token::String(self.admin_role_description())])
+    }
+
+    fn admin_role(&self) -> Bytes32 {
+        RoleDeriver::derive_role(
+            RoleDeriver::derive_root_role(&self.manager.0),
+            self.admin_role_description()
+        )
+    }
+}
+
+impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
     fn has_role(&self, role: &Bytes32, who: &Self::Address) -> bool {
         let hash = Self::hash_membership(role, who);
         match &self.role_membership {
@@ -247,61 +257,6 @@ impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
         };
         (*m).remove(&hash);
         Ok(())
-    }
-}
-
-/// Near whitelist implementation
-/// Currently a dummy implementation
-pub(crate) struct NearWhitelist {}
-
-impl NearWhitelist {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Whitelist for NearWhitelist {
-    type Address = Address;
-    type U256 = U256;
-
-    fn user_is_whitelisted(&self, _service_id: &Bytes32, _user: &Self::Address) -> bool {
-        true
-    }
-
-    fn extend_whitelist_expiration(
-        &mut self,
-        _service_id: &Bytes32,
-        _user: &Self::Address,
-        _expiration_timestamp: u64,
-    ) {
-        todo!()
-    }
-
-    fn set_whitelist_expiration(
-        &mut self,
-        _service_id: &Bytes32,
-        _user: &Self::Address,
-        _expiration_timestamp: u64,
-    ) {
-        todo!()
-    }
-
-    fn set_indefinite_whitelist_status(
-        &mut self,
-        _service_id: &Bytes32,
-        _user: &Self::Address,
-        _status: bool,
-    ) -> Self::U256 {
-        todo!()
-    }
-
-    fn revoke_indefinite_whitelist_status(
-        &mut self,
-        _service_id: &Bytes32,
-        _user: &Self::Address,
-        _setter: &Self::Address,
-    ) -> (bool, Self::U256) {
-        todo!()
     }
 }
 
