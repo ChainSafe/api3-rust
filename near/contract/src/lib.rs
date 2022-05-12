@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 mod types;
 mod utils;
 mod whitelist;
@@ -58,7 +56,6 @@ impl Default for DapiServer {
         let data_points = LookupMap::new(b'd');
         let name_hash_to_data_point_id = LookupMap::new(b'n');
 
-        let manager = Address(Bytes32::default());
         let role_membership = LookupMap::new(b'm');
         let role_admin = LookupMap::new(b'a');
 
@@ -191,11 +188,28 @@ impl DapiServer {
         .unwrap();
     }
 
-    #[cfg(test)]
-    fn get_data_point(&self, template_id: &Bytes32) -> NearDataPoint {
+    pub fn get_data_point(&mut self, template_id: &Bytes32) -> Bytes32 {
+        let access = NearAccessControlRegistry::read_only(
+            self.manager.clone(),
+            self.admin_role_description.clone(),
+            &self.role_membership,
+            &self.role_admin,
+        );
+        ensure!(
+            access
+                .only_role(
+                    &NearAccessControlRegistry::DEFAULT_ADMIN_ROLE,
+                    &msg_sender()
+                )
+                .is_ok(),
+            Error::NotAuthorized
+        );
+        let mut v = Bytes32::default();
         self.data_points
             .get(template_id)
             .unwrap_or(NearDataPoint::new(U256::from(0u32), 0))
+            .value.to_big_endian(&mut v);
+        v
     }
 
     /// Updates the dAPI that is specified by the beacon IDs
@@ -222,7 +236,6 @@ impl DapiServer {
         signatures: Vec<Bytes>,
     ) -> Bytes32 {
         let mut storage = DatapointHashMap::requires_write(&mut self.data_points);
-        let sig_verify = SignatureVerify {};
         let clock = NearClock::new(nanoseconds_to_seconds(near_sdk::env::block_timestamp()));
 
         api3_common::update_dapi_with_signed_data::<_, SignatureVerify, _>(

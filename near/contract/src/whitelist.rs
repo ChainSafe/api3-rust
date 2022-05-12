@@ -122,29 +122,29 @@ impl  <'a, Access: AccessControlRegistryAdminnedWithManager> Whitelist for NearW
         (*m).insert(&hash, &whitelist_status);
     }
 
-    fn set_whitelist_expiration(&mut self, service_id: &Bytes32, user: &Self::Address, expiration_timestamp: u64) {
+    fn set_whitelist_expiration(&mut self, _service_id: &Bytes32, _user: &Self::Address, _expiration_timestamp: u64) {
         todo!()
     }
 
-    fn set_indefinite_whitelist_status(&mut self, service_id: &Bytes32, user: &Self::Address, status: bool) -> U256 {
+    fn set_indefinite_whitelist_status(&mut self, _service_id: &Bytes32, _user: &Self::Address, _status: bool) -> U256 {
         todo!()
     }
 
-    fn revoke_indefinite_whitelist_status(&mut self, service_id: &Bytes32, user: &Self::Address, setter: &Self::Address) -> (bool, U256) {
+    fn revoke_indefinite_whitelist_status(&mut self, _service_id: &Bytes32, _user: &Self::Address, _setter: &Self::Address) -> (bool, U256) {
         todo!()
     }
 }
 
 impl <'a, Access: AccessControlRegistryAdminnedWithManager<Address = Address>> WhitelistRolesWithManager for NearWhitelist<'a, Access> {
-    fn has_whitelist_expiration_extender_role_or_is_manager(&self, account: &Self::Address) -> bool {
+    fn has_whitelist_expiration_extender_role_or_is_manager(&self, _account: &Self::Address) -> bool {
         todo!()
     }
 
-    fn has_indefinite_whitelister_role_or_is_manager(&self, account: Self::Address) -> bool {
+    fn has_indefinite_whitelister_role_or_is_manager(&self, _account: Self::Address) -> bool {
         todo!()
     }
 
-    fn has_whitelist_expiration_setter_role_or_is_manager(&self, account: Self::Address) -> bool {
+    fn has_whitelist_expiration_setter_role_or_is_manager(&self, _account: Self::Address) -> bool {
         todo!()
     }
 }

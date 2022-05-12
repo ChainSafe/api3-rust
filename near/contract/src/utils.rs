@@ -230,6 +230,9 @@ impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
     }
 
     fn get_role_admin(&self, role: &Bytes32) -> Option<Bytes32> {
+        if *role == Self::DEFAULT_ADMIN_ROLE {
+            return Some(Self::DEFAULT_ADMIN_ROLE)
+        }
         match &self.role_admin {
             ReadWrite::ReadOnly(a) => (*a).get(role).map(|a| Bytes32::from(a)),
             ReadWrite::Write(a) => (*a).get(role).map(|a| Bytes32::from(a)),

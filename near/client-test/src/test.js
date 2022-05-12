@@ -11,9 +11,10 @@ const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
 
 // DEFINE THESE
-const accountName = "mocha-test.testnet";
+const adminAccount = "mocha-test.testnet";
+const userAccount = "user-test.testnet";
 const contractAccount = "test-api3.testnet";
-const isInitialized = false;
+const isInitialized = true;
 
 const config = {
   keyStore,
@@ -23,14 +24,16 @@ const config = {
 
 describe('Token', function () {
   let contract;
+  let userContract;
   let near;
+
   // define all the data
   const templateId1 = 1;  
   const data1 = 121;
-  
+
   const templateId2 = 2;
   const data2 = 122;
-  
+
   const templateId3 = 3;
   const data3 = 123;
 
@@ -44,18 +47,24 @@ describe('Token', function () {
         'grant_role',
         'update_beacon_with_signed_data',
         'update_dapi_with_beacons',
-        'update_dapi_with_signed_data'
+        'update_dapi_with_signed_data',
+        'get_data_point'
       ],
-      sender: accountName
+      sender: adminAccount
     });
 
-    const account = await near.account(accountName);
+    userContract = await near.loadContract(contractAccount, {
+      viewMethods: [],
+      changeMethods: ['get_data_point'],
+      sender: userAccount
+    });
+
+    const account = await near.account(adminAccount);
     const key = `${account.connection.signer.keyStore.keyDir}/testnet/${account.accountId}.json`;
     const data = JSON.parse(fs.readFileSync(key));
     keyPair = nearAPI.KeyPair.fromString(data.private_key);
 
     if (!isInitialized) {
-      const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
       await contract.initialize(
         {
           args: { }
@@ -93,117 +102,142 @@ describe('Token', function () {
         )
       ).toEqual(false);
     });
-  });
 
-  describe('updateBeaconWithSignedData', function () {
-    it('works', async function () {
+    it('grant access denied - not default admin', async function () {
+      try {
+        let r = await userContract.get_data_point(
+          {
+            args: {
+              template_id: [...bufferU64BE(0)]
+            }
+          }
+        );
+      } catch(e) {
+        // {"index":0,"kind":{"ExecutionError":"Smart contract panicked: NotAuthorized"}}
+        console.log(e);
+      }
 
-      const timestamp = Math.floor(Date.now() / 1000);
-      const message1 = prepareMessage(templateId1, timestamp, data1);
-      const sig1 = keyPair.sign(message1);
-
-      const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
-      const bufferedTimestamp = bufferU64BE(timestamp);
-      const bufferedTemplateId = bufferU64BE(templateId1);
-      const encodedData = encodeData(data1);
-      const buf = toBuffer(sig1.signature);
-
-      await contract.update_beacon_with_signed_data(
+      // here the admin would pass
+      r = await contract.get_data_point(
         {
           args: {
-            airnode: [...pubKeyBuf],
-            template_id: [...bufferedTemplateId],
-            timestamp: [...bufferedTimestamp],
-            data: [...encodedData],
-            signature: [...buf]
+            template_id: [...bufferU64BE(0)]
           }
         }
       );
-
-      const timestamp2 = Math.floor(Date.now() / 1000);
-      const message2 = prepareMessage(templateId2, timestamp2, data2);
-      const sig2 = keyPair.sign(message2);
-
-      const pubKeyBuf2 = toBuffer(keyPair.getPublicKey().data);
-      const bufferedTimestamp2 = bufferU64BE(timestamp2);
-      const bufferedTemplateId2 = bufferU64BE(templateId2);
-      const encodedData2 = encodeData(data2);
-      const buf2 = toBuffer(sig2.signature);
-
-      await contract.update_beacon_with_signed_data(
-        {
-          args: {
-            airnode: [...pubKeyBuf2],
-            template_id: [...bufferedTemplateId2],
-            timestamp: [...bufferedTimestamp2],
-            data: [...encodedData2],
-            signature: [...buf2]
-          }
-        }
-      );
+      expect(r !== undefined).toEqual(true);
     });
   });
 
-  describe('updateDapiWithBeacons', function () {
-    it('works', async function () {
-      await contract.update_dapi_with_beacons(
-        {
-          args: {
-            beacon_ids: [
-              [...deriveBeaconId(toBuffer(keyPair.getPublicKey().data), templateId1)],
-              [...deriveBeaconId(toBuffer(keyPair.getPublicKey().data), templateId2)]
-            ]
-          }
-        }
-      );
-    });
-  });
+  // describe('updateBeaconWithSignedData', function () {
+  //   it('works', async function () {
 
-  describe('updateDapiWithSignedData', function () {
-    it('works', async function () {
-      const timestamp = Math.floor(Date.now() / 1000);
-      const message3 = prepareMessage(templateId3, timestamp, data3);
-      const sig3 = keyPair.sign(message3);
+  //     const timestamp = Math.floor(Date.now() / 1000);
+  //     const message1 = prepareMessage(templateId1, timestamp, data1);
+  //     const sig1 = keyPair.sign(message1);
 
-      const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
-      // console.log(
-      //   [...pubKeyBuf],
-      //   [...message3],
-      //   [...toBuffer(sig3.signature)]
-      // );
-      await contract.update_dapi_with_signed_data(
-        {
-          args: {
-            airnodes: [
-              [...pubKeyBuf],
-              [...pubKeyBuf],
-              [...pubKeyBuf]
-            ],
-            template_ids: [
-              [...bufferU64BE(templateId1)],
-              [...bufferU64BE(templateId2)],
-              [...bufferU64BE(templateId3)]
-            ],
-            timestamps: [
-              [...bufferU64BE(Math.floor(Date.now() / 1000))],
-              [...bufferU64BE(Math.floor(Date.now() / 1000))],
-              [...bufferU64BE(timestamp)],
-            ],
-            data: [
-              [...encodeData(data1)],
-              [...encodeData(data2)],
-              [...encodeData(data3)]
-            ],
-            signatures: [
-              [],
-              [],
-              [...toBuffer(sig3.signature)]
-            ],
-          }
-        }
-      );
-    });
-  });
+  //     const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
+  //     const bufferedTimestamp = bufferU64BE(timestamp);
+  //     const bufferedTemplateId = bufferU64BE(templateId1);
+  //     const encodedData = encodeData(data1);
+  //     const buf = toBuffer(sig1.signature);
+
+  //     await contract.update_beacon_with_signed_data(
+  //       {
+  //         args: {
+  //           airnode: [...pubKeyBuf],
+  //           template_id: [...bufferedTemplateId],
+  //           timestamp: [...bufferedTimestamp],
+  //           data: [...encodedData],
+  //           signature: [...buf]
+  //         }
+  //       }
+  //     );
+
+  //     const timestamp2 = Math.floor(Date.now() / 1000);
+  //     const message2 = prepareMessage(templateId2, timestamp2, data2);
+  //     const sig2 = keyPair.sign(message2);
+
+  //     const pubKeyBuf2 = toBuffer(keyPair.getPublicKey().data);
+  //     const bufferedTimestamp2 = bufferU64BE(timestamp2);
+  //     const bufferedTemplateId2 = bufferU64BE(templateId2);
+  //     const encodedData2 = encodeData(data2);
+  //     const buf2 = toBuffer(sig2.signature);
+
+  //     await contract.update_beacon_with_signed_data(
+  //       {
+  //         args: {
+  //           airnode: [...pubKeyBuf2],
+  //           template_id: [...bufferedTemplateId2],
+  //           timestamp: [...bufferedTimestamp2],
+  //           data: [...encodedData2],
+  //           signature: [...buf2]
+  //         }
+  //       }
+  //     );
+  //   });
+  // });
+
+  // describe('updateDapiWithBeacons', function () {
+  //   it('works', async function () {
+  //     await contract.update_dapi_with_beacons(
+  //       {
+  //         args: {
+  //           beacon_ids: [
+  //             [...deriveBeaconId(toBuffer(keyPair.getPublicKey().data), templateId1)],
+  //             [...deriveBeaconId(toBuffer(keyPair.getPublicKey().data), templateId2)]
+  //           ]
+  //         }
+  //       }
+  //     );
+  //   });
+  // });
+
+  // describe('updateDapiWithSignedData', function () {
+  //   it('works', async function () {
+  //     const timestamp = Math.floor(Date.now() / 1000);
+  //     const message3 = prepareMessage(templateId3, timestamp, data3);
+  //     const sig3 = keyPair.sign(message3);
+
+  //     const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
+  //     // console.log(
+  //     //   [...pubKeyBuf],
+  //     //   [...message3],
+  //     //   [...toBuffer(sig3.signature)]
+  //     // );
+  //     await contract.update_dapi_with_signed_data(
+  //       {
+  //         args: {
+  //           airnodes: [
+  //             [...pubKeyBuf],
+  //             [...pubKeyBuf],
+  //             [...pubKeyBuf]
+  //           ],
+  //           template_ids: [
+  //             [...bufferU64BE(templateId1)],
+  //             [...bufferU64BE(templateId2)],
+  //             [...bufferU64BE(templateId3)]
+  //           ],
+  //           timestamps: [
+  //             [...bufferU64BE(Math.floor(Date.now() / 1000))],
+  //             [...bufferU64BE(Math.floor(Date.now() / 1000))],
+  //             [...bufferU64BE(timestamp)],
+  //           ],
+  //           data: [
+  //             [...encodeData(data1)],
+  //             [...encodeData(data2)],
+  //             [...encodeData(data3)]
+  //           ],
+  //           signatures: [
+  //             [],
+  //             [],
+  //             [...toBuffer(sig3.signature)]
+  //           ],
+  //         }
+  //       }
+  //     );
+  //   });
+  // });
 });
 
 function createRawDatapointBuffer(data, timestamp) {
