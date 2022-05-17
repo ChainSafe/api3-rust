@@ -33,3 +33,4 @@ RUN . $NVM_DIR/nvm.sh && \
 
 RUN chown -R dev /home/dev/.cargo /home/dev/.nvm
 RUN apt-get install -y clang
+RUN rustup default stable && rustup target add wasm32-unknown-unknown && npm install -g near-cli

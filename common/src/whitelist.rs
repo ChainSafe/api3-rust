@@ -1,8 +1,8 @@
 #![allow(unused)]
-use crate::{AccessControlRegistryAdminnedWithManager, ensure, keccak_packed, RoleDeriver};
-use crate::Error;
-use crate::{Bytes32, Zero};
 use crate::abi::{Token, U256};
+use crate::Error;
+use crate::{ensure, keccak_packed, AccessControlRegistryAdminnedWithManager, RoleDeriver};
+use crate::{Bytes32, Zero};
 
 /// Trait that implements temporary and permanent whitelists for
 /// multiple services identified with a hash
@@ -93,13 +93,16 @@ pub trait WhitelistRoles {
     }
 }
 
-pub trait WhitelistRolesWithManager: WhitelistRoles + AccessControlRegistryAdminnedWithManager {
+pub trait WhitelistRolesWithManager:
+    WhitelistRoles + AccessControlRegistryAdminnedWithManager
+{
     /// @dev Returns if the account has the whitelist expiration extender role
     /// or is the manager
     /// @param account Account address
     /// @return If the account has the whitelist extender role or is the
     /// manager
-    fn has_whitelist_expiration_extender_role_or_is_manager(&self, account: &Self::Address) -> bool;
+    fn has_whitelist_expiration_extender_role_or_is_manager(&self, account: &Self::Address)
+        -> bool;
 
     /// Returns if the account has the indefinite whitelister role or is the
     /// manager
@@ -114,21 +117,21 @@ pub trait WhitelistRolesWithManager: WhitelistRoles + AccessControlRegistryAdmin
     fn whitelist_expiration_extender_role(&self) -> Bytes32 {
         RoleDeriver::derive_role(
             self.admin_role(),
-            Self::whitelist_expiration_extender_role_description()
+            Self::whitelist_expiration_extender_role_description(),
         )
     }
 
     fn whitelist_expiration_setter_role(&self) -> Bytes32 {
         RoleDeriver::derive_role(
             self.admin_role(),
-            Self::whitelist_expiration_setter_role_description()
+            Self::whitelist_expiration_setter_role_description(),
         )
     }
 
     fn indefinite_whitelister_role(&self) -> Bytes32 {
         RoleDeriver::derive_role(
             self.admin_role(),
-            Self::indefinite_whitelister_role_description()
+            Self::indefinite_whitelister_role_description(),
         )
     }
 }

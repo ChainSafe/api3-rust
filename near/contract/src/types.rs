@@ -3,11 +3,8 @@
 use api3_common::abi::{Int, U256};
 use api3_common::{Bytes32, DataPoint, Zero};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::AccountId;
-use serde::{Deserialize, Serialize};
-use std::io;
 
-#[derive(BorshDeserialize, BorshSerialize, PartialEq, Clone)]
+#[derive(BorshDeserialize, BorshSerialize, PartialEq, Clone, Default)]
 pub struct Address(pub Bytes32);
 
 impl From<Address> for Bytes32 {

@@ -41,7 +41,7 @@ describe('Token', function () {
   beforeAll(async function () {
     near = await nearAPI.connect(config);
     contract = await near.loadContract(contractAccount, {
-      viewMethods: ['has_role'],
+      viewMethods: ['has_role', 'read_with_data_point_id'],
       changeMethods: [
         'initialize',
         'grant_role',
@@ -102,138 +102,153 @@ describe('Token', function () {
         )
       ).toEqual(false);
     });
+  });
 
-    it('grant access denied - not default admin', async function () {
-      try {
-        let r = await userContract.get_data_point(
-          {
-            args: {
-              template_id: [...bufferU64BE(0)]
-            }
-          }
-        );
-      } catch(e) {
-        // {"index":0,"kind":{"ExecutionError":"Smart contract panicked: NotAuthorized"}}
-        console.log(e);
-      }
+  describe('updateBeaconWithSignedData', function () {
+    it('works', async function () {
 
-      // here the admin would pass
-      r = await contract.get_data_point(
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message1 = prepareMessage(templateId1, timestamp, data1);
+      const sig1 = keyPair.sign(message1);
+
+      const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
+      const bufferedTimestamp = bufferU64BE(timestamp);
+      const bufferedTemplateId = bufferU64BE(templateId1);
+      const encodedData = encodeData(data1);
+      const buf = toBuffer(sig1.signature);
+
+      await contract.update_beacon_with_signed_data(
         {
           args: {
-            template_id: [...bufferU64BE(0)]
+            airnode: [...pubKeyBuf],
+            template_id: [...bufferedTemplateId],
+            timestamp: [...bufferedTimestamp],
+            data: [...encodedData],
+            signature: [...buf]
           }
         }
       );
-      expect(r !== undefined).toEqual(true);
+
+      let data = await contract.read_with_data_point_id(
+        {
+          data_point_id: [...deriveBeaconId(pubKeyBuf, templateId1)]
+        }
+      );
+      expect(data[0]).toEqual([...encodedData]);
+      expect(data[1]).toEqual(timestamp);
+
+      const timestamp2 = Math.floor(Date.now() / 1000);
+      const message2 = prepareMessage(templateId2, timestamp2, data2);
+      const sig2 = keyPair.sign(message2);
+
+      const pubKeyBuf2 = toBuffer(keyPair.getPublicKey().data);
+      const bufferedTimestamp2 = bufferU64BE(timestamp2);
+      const bufferedTemplateId2 = bufferU64BE(templateId2);
+      const encodedData2 = encodeData(data2);
+      const buf2 = toBuffer(sig2.signature);
+
+      await contract.update_beacon_with_signed_data(
+        {
+          args: {
+            airnode: [...pubKeyBuf2],
+            template_id: [...bufferedTemplateId2],
+            timestamp: [...bufferedTimestamp2],
+            data: [...encodedData2],
+            signature: [...buf2]
+          }
+        }
+      );
+
+      data = await contract.read_with_data_point_id(
+        {
+          data_point_id: [...deriveBeaconId(pubKeyBuf2, templateId2)]
+        }
+      );
+      expect(data[0]).toEqual([...encodedData2]);
+      expect(data[1]).toEqual(timestamp2);
     });
   });
 
-  // describe('updateBeaconWithSignedData', function () {
-  //   it('works', async function () {
+  describe('updateDapiWithBeacons', function () {
+    it('works', async function () {
+      await contract.update_dapi_with_beacons(
+        {
+          args: {
+            beacon_ids: [
+              [...deriveBeaconId(toBuffer(keyPair.getPublicKey().data), templateId1)],
+              [...deriveBeaconId(toBuffer(keyPair.getPublicKey().data), templateId2)]
+            ]
+          }
+        }
+      );
+    });
+  });
 
-  //     const timestamp = Math.floor(Date.now() / 1000);
-  //     const message1 = prepareMessage(templateId1, timestamp, data1);
-  //     const sig1 = keyPair.sign(message1);
+  describe('updateDapiWithSignedData', function () {
+    it('works', async function () {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message3 = prepareMessage(templateId3, timestamp, data3);
+      const sig3 = keyPair.sign(message3);
 
-  //     const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
-  //     const bufferedTimestamp = bufferU64BE(timestamp);
-  //     const bufferedTemplateId = bufferU64BE(templateId1);
-  //     const encodedData = encodeData(data1);
-  //     const buf = toBuffer(sig1.signature);
+      const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
+      const t1 = Math.floor(Date.now() / 1000);
+      const t2 = Math.floor(Date.now() / 1000);
+      await contract.update_dapi_with_signed_data(
+        {
+          args: {
+            airnodes: [
+              [...pubKeyBuf],
+              [...pubKeyBuf],
+              [...pubKeyBuf]
+            ],
+            template_ids: [
+              [...bufferU64BE(templateId1)],
+              [...bufferU64BE(templateId2)],
+              [...bufferU64BE(templateId3)]
+            ],
+            timestamps: [
+              [...bufferU64BE(t1)],
+              [...bufferU64BE(t2)],
+              [...bufferU64BE(timestamp)],
+            ],
+            data: [
+              [...encodeData(data1)],
+              [...encodeData(data2)],
+              [...encodeData(data3)]
+            ],
+            signatures: [
+              [],
+              [],
+              [...toBuffer(sig3.signature)]
+            ],
+          }
+        }
+      );
 
-  //     await contract.update_beacon_with_signed_data(
-  //       {
-  //         args: {
-  //           airnode: [...pubKeyBuf],
-  //           template_id: [...bufferedTemplateId],
-  //           timestamp: [...bufferedTimestamp],
-  //           data: [...encodedData],
-  //           signature: [...buf]
-  //         }
-  //       }
-  //     );
+      const beaconId1 = deriveBeaconId(pubKeyBuf, templateId1);
+      const beaconId2 = deriveBeaconId(pubKeyBuf, templateId2);
+      const beaconId3 = deriveBeaconId(pubKeyBuf, templateId3);
+      const beaconIds = [beaconId1, beaconId2, beaconId3];
+      const dataPointId = deriveDApiId(beaconIds);
+      let data = await contract.read_with_data_point_id(
+        {
+          data_point_id: [...dataPointId]
+        }
+      );
+      expect(data[0]).toEqual([...bufferU64BE((data1 + data2 + data3) / 3)]);
+    });
+  });
 
-  //     const timestamp2 = Math.floor(Date.now() / 1000);
-  //     const message2 = prepareMessage(templateId2, timestamp2, data2);
-  //     const sig2 = keyPair.sign(message2);
-
-  //     const pubKeyBuf2 = toBuffer(keyPair.getPublicKey().data);
-  //     const bufferedTimestamp2 = bufferU64BE(timestamp2);
-  //     const bufferedTemplateId2 = bufferU64BE(templateId2);
-  //     const encodedData2 = encodeData(data2);
-  //     const buf2 = toBuffer(sig2.signature);
-
-  //     await contract.update_beacon_with_signed_data(
-  //       {
-  //         args: {
-  //           airnode: [...pubKeyBuf2],
-  //           template_id: [...bufferedTemplateId2],
-  //           timestamp: [...bufferedTimestamp2],
-  //           data: [...encodedData2],
-  //           signature: [...buf2]
-  //         }
-  //       }
-  //     );
-  //   });
-  // });
-
-  // describe('updateDapiWithBeacons', function () {
-  //   it('works', async function () {
-  //     await contract.update_dapi_with_beacons(
-  //       {
-  //         args: {
-  //           beacon_ids: [
-  //             [...deriveBeaconId(toBuffer(keyPair.getPublicKey().data), templateId1)],
-  //             [...deriveBeaconId(toBuffer(keyPair.getPublicKey().data), templateId2)]
-  //           ]
-  //         }
-  //       }
-  //     );
-  //   });
-  // });
-
-  // describe('updateDapiWithSignedData', function () {
+  // describe('setName', function () {
   //   it('works', async function () {
   //     const timestamp = Math.floor(Date.now() / 1000);
   //     const message3 = prepareMessage(templateId3, timestamp, data3);
   //     const sig3 = keyPair.sign(message3);
 
   //     const pubKeyBuf = toBuffer(keyPair.getPublicKey().data);
-  //     // console.log(
-  //     //   [...pubKeyBuf],
-  //     //   [...message3],
-  //     //   [...toBuffer(sig3.signature)]
-  //     // );
-  //     await contract.update_dapi_with_signed_data(
+  //     await contract.read_with_data_point_id(
   //       {
-  //         args: {
-  //           airnodes: [
-  //             [...pubKeyBuf],
-  //             [...pubKeyBuf],
-  //             [...pubKeyBuf]
-  //           ],
-  //           template_ids: [
-  //             [...bufferU64BE(templateId1)],
-  //             [...bufferU64BE(templateId2)],
-  //             [...bufferU64BE(templateId3)]
-  //           ],
-  //           timestamps: [
-  //             [...bufferU64BE(Math.floor(Date.now() / 1000))],
-  //             [...bufferU64BE(Math.floor(Date.now() / 1000))],
-  //             [...bufferU64BE(timestamp)],
-  //           ],
-  //           data: [
-  //             [...encodeData(data1)],
-  //             [...encodeData(data2)],
-  //             [...encodeData(data3)]
-  //           ],
-  //           signatures: [
-  //             [],
-  //             [],
-  //             [...toBuffer(sig3.signature)]
-  //           ],
-  //         }
+  //         data_point_id: []
   //       }
   //     );
   //   });

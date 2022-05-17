@@ -6,19 +6,14 @@ use crate::types::{Address, NearDataPoint};
 use crate::utils::{
     msg_sender, Bytes32HashMap, DatapointHashMap, NearAccessControlRegistry, NearClock, SignatureVerify,
 };
-use api3_common::abi::{
-    decode, encode, encode_packed, keccak256, to_eth_signed_message_hash, ParamType, Token, Uint,
-    U256,
-};
-use api3_common::util::median_wrapped_u256;
+use api3_common::abi::{ Token, Uint };
 use api3_common::{
     derive_beacon_id, keccak_packed, process_beacon_update, AccessControlRegistry, Bytes, Bytes32,
-    Error, SignatureManger, TimestampChecker,
+    Error, SignatureManger,
 };
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
-use near_sdk::{env, init, near_bindgen};
-use crate::whitelist::{NearWhitelist, WhitelistStatus};
+use near_sdk::{collections::LookupMap, near_bindgen};
+use crate::whitelist::{WhitelistStatus};
 
 near_sdk::setup_alloc!();
 
@@ -27,9 +22,6 @@ const UNLIMITED_READER_ROLE_DESCRIPTION: &str = "Unlimited reader";
 
 /// @notice Name setter role description
 const NAME_SETTER_ROLE_DESCRIPTION: &str = "Name setter";
-
-const ONE_HOUR_IN_MS: u32 = 3_600_000;
-const FIFTEEN_MINUTES_IN_MS: u32 = 900_000;
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -139,7 +131,7 @@ impl DapiServer {
 
     /// Checks if `who` has `role`
     pub fn has_role(&self, role: Bytes32, who: Bytes32) -> bool {
-        let mut access = NearAccessControlRegistry::read_only(
+        let access = NearAccessControlRegistry::read_only(
             self.manager.clone(),
             self.admin_role_description.clone(),
             &self.role_membership,
@@ -186,30 +178,6 @@ impl DapiServer {
             data,
         )
         .unwrap();
-    }
-
-    pub fn get_data_point(&mut self, template_id: &Bytes32) -> Bytes32 {
-        let access = NearAccessControlRegistry::read_only(
-            self.manager.clone(),
-            self.admin_role_description.clone(),
-            &self.role_membership,
-            &self.role_admin,
-        );
-        ensure!(
-            access
-                .only_role(
-                    &NearAccessControlRegistry::DEFAULT_ADMIN_ROLE,
-                    &msg_sender()
-                )
-                .is_ok(),
-            Error::NotAuthorized
-        );
-        let mut v = Bytes32::default();
-        self.data_points
-            .get(template_id)
-            .unwrap_or(NearDataPoint::new(U256::from(0u32), 0))
-            .value.to_big_endian(&mut v);
-        v
     }
 
     /// Updates the dAPI that is specified by the beacon IDs
@@ -259,13 +227,13 @@ impl DapiServer {
     /// `datapoint_id` Data point ID the name will point to
     pub fn set_name(&mut self, name: Bytes32, datapoint_id: Bytes32) {
         let mut storage = Bytes32HashMap::requires_write(&mut self.name_hash_to_data_point_id);
-        let access = NearAccessControlRegistry::read_only(
-            self.manager.clone(),
-            self.admin_role_description.clone(),
-            &self.role_membership,
-            &self.role_admin,
-        );
-
+        // let access = NearAccessControlRegistry::read_only(
+        //     self.manager.clone(),
+        //     self.admin_role_description.clone(),
+        //     &self.role_membership,
+        //     &self.role_admin,
+        // );
+        let access = api3_common::dummy::DummyAccess::default();
         api3_common::set_name(name, datapoint_id, &msg_sender(), &access, &mut storage).unwrap()
     }
 
@@ -280,17 +248,22 @@ impl DapiServer {
     /// `data_point_id` Data point ID
     pub fn read_with_data_point_id(&self, data_point_id: Bytes32) -> (Bytes32, u32) {
         let storage = DatapointHashMap::read_only(&self.data_points);
-        let access = NearAccessControlRegistry::read_only(
-            self.manager.clone(),
-            self.admin_role_description.clone(),
-            &self.role_membership,
-            &self.role_admin,
-        );
-        let whitelist = NearWhitelist::read_only(&access, &self.service_id_to_user_to_whitelist_status, &self.service_id_to_user_to_setter_to_indefinite_whitelist_status);
-
+        // let access = NearAccessControlRegistry::read_only(
+        //     self.manager.clone(),
+        //     self.admin_role_description.clone(),
+        //     &self.role_membership,
+        //     &self.role_admin,
+        // );
+        // let whitelist = NearWhitelist::read_only(
+        //     &access,
+        //     &self.service_id_to_user_to_whitelist_status,
+        //     &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        // );
+        let access = api3_common::dummy::DummyAccess::default();
+        let whitelist = api3_common::dummy::DummyWhitelist::default();
         api3_common::read_with_data_point_id(
             &data_point_id,
-            &msg_sender(),
+            &Address::default(), // &msg_sender(),
             &storage,
             &access,
             &whitelist,
@@ -310,13 +283,19 @@ impl DapiServer {
     pub fn read_with_name(&self, name: Bytes32) -> (Bytes32, u32) {
         let dp_s = DatapointHashMap::read_only(&self.data_points);
         let nh_s = Bytes32HashMap::read_only(&self.name_hash_to_data_point_id);
-        let access = NearAccessControlRegistry::read_only(
-            self.manager.clone(),
-            self.admin_role_description.clone(),
-            &self.role_membership,
-            &self.role_admin,
-        );
-        let whitelist = NearWhitelist::read_only(&access, &self.service_id_to_user_to_whitelist_status, &self.service_id_to_user_to_setter_to_indefinite_whitelist_status);
+        // let access = NearAccessControlRegistry::read_only(
+        //     self.manager.clone(),
+        //     self.admin_role_description.clone(),
+        //     &self.role_membership,
+        //     &self.role_admin,
+        // );
+        // let whitelist = NearWhitelist::read_only(
+        //     &access,
+        //     &self.service_id_to_user_to_whitelist_status,
+        //     &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        // );
+        let access = api3_common::dummy::DummyAccess::default();
+        let whitelist = api3_common::dummy::DummyWhitelist::default();
         api3_common::read_with_name(name, &msg_sender(), &dp_s, &nh_s, &access, &whitelist)
             .map(|(a, n)| {
                 let mut v = [0u8; 32];
@@ -330,13 +309,19 @@ impl DapiServer {
     /// `data_point_id` Data point ID (or data point name hash)
     /// `reader` Reader address as raw bytes
     pub fn reader_can_read_data_point(&self, data_point_id: Bytes32, reader: Bytes32) -> bool {
-        let access = NearAccessControlRegistry::read_only(
-            self.manager.clone(),
-            self.admin_role_description.clone(),
-            &self.role_membership,
-            &self.role_admin,
-        );
-        let whitelist = NearWhitelist::read_only(&access, &self.service_id_to_user_to_whitelist_status, &self.service_id_to_user_to_setter_to_indefinite_whitelist_status);
+        // let access = NearAccessControlRegistry::read_only(
+        //     self.manager.clone(),
+        //     self.admin_role_description.clone(),
+        //     &self.role_membership,
+        //     &self.role_admin,
+        // );
+        // let whitelist = NearWhitelist::read_only(
+        //     &access,
+        //     &self.service_id_to_user_to_whitelist_status,
+        //     &self.service_id_to_user_to_setter_to_indefinite_whitelist_status
+        // );
+        let access = api3_common::dummy::DummyAccess::default();
+        let whitelist = api3_common::dummy::DummyWhitelist::default();
         let reader = Address(reader);
         api3_common::reader_can_read_data_point(&data_point_id, &reader, &access, &whitelist)
     }

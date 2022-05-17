@@ -1,6 +1,6 @@
 use crate::types::{Address, NearDataPoint};
-use api3_common::abi::{Token, U256};
-use api3_common::{keccak_packed, AccessControlRegistry, Bytes32, DataPoint, Error, SignatureManger, Storage, TimestampChecker, Whitelist, AccessControlRegistryAdminnedWithManager, RoleDeriver};
+use api3_common::abi::{Token};
+use api3_common::{keccak_packed, AccessControlRegistry, Bytes32, DataPoint, Error, SignatureManger, Storage, TimestampChecker, AccessControlRegistryAdminnedWithManager, RoleDeriver};
 use ed25519_dalek::Verifier;
 use near_sdk::collections::LookupMap;
 
@@ -34,11 +34,11 @@ impl<'account> Storage<DataPoint> for DatapointHashMap<'account> {
     fn get(&self, k: &Bytes32) -> Option<DataPoint> {
         match &self.map {
             ReadWrite::ReadOnly(a) => match (*a).get(k) {
-                Some(d) => Some(d.clone().into()),
+                Some(d) => Some(d.into()),
                 None => Some(DataPoint::default()),
             },
             ReadWrite::Write(a) => match (*a).get(k) {
-                Some(d) => Some(d.clone().into()),
+                Some(d) => Some(d.into()),
                 None => Some(DataPoint::default()),
             },
         }
@@ -79,14 +79,8 @@ impl<'account> Bytes32HashMap<'account> {
 impl<'account> Storage<Bytes32> for Bytes32HashMap<'account> {
     fn get(&self, k: &Bytes32) -> Option<Bytes32> {
         match &self.map {
-            ReadWrite::ReadOnly(a) => match (*a).get(k) {
-                Some(d) => Some(d.clone().into()),
-                None => None,
-            },
-            ReadWrite::Write(a) => match (*a).get(k) {
-                Some(d) => Some(d.clone().into()),
-                None => None,
-            },
+            ReadWrite::ReadOnly(a) => (*a).get(k),
+            ReadWrite::Write(a) => (*a).get(k),
         }
     }
 
@@ -135,7 +129,8 @@ impl TimestampChecker for NearClock {
 }
 
 pub(crate) fn msg_sender() -> Address {
-    let sender_bytes = near_sdk::env::signer_account_pk().to_vec();
+    let sender = near_sdk::env::predecessor_account_id();
+    let sender_bytes = sender.as_bytes();
     let mut v = Bytes32::default();
     v.copy_from_slice(&sender_bytes[1..]);
     Address(v)
@@ -234,8 +229,8 @@ impl<'a> AccessControlRegistry for NearAccessControlRegistry<'a> {
             return Some(Self::DEFAULT_ADMIN_ROLE)
         }
         match &self.role_admin {
-            ReadWrite::ReadOnly(a) => (*a).get(role).map(|a| Bytes32::from(a)),
-            ReadWrite::Write(a) => (*a).get(role).map(|a| Bytes32::from(a)),
+            ReadWrite::ReadOnly(a) => (*a).get(role).map(Bytes32::from),
+            ReadWrite::Write(a) => (*a).get(role).map(Bytes32::from),
         }
     }
 

@@ -3,6 +3,8 @@ mod access;
 mod agg;
 mod beacon;
 mod datapoint;
+#[cfg(feature = "dummy")]
+pub mod dummy;
 mod error;
 pub mod util;
 mod whitelist;

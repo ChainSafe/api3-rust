@@ -1,3 +1,6 @@
+#![allow(clippy::assign_op_pattern)]
+#![allow(clippy::ptr_offset_with_cast)]
+
 use crate::Bytes;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::io;
