@@ -71,8 +71,9 @@ near login --account-id ${USER_ACCOUNT}
 #### Deploy the contracts
 In the root folder, deploy the `api3-contract` using:
 ```
-near deploy --wasmFile ./target/wasm32-unknown-unknown/release/dapi_server.wasm --contractName=${CONTRACT_ACCOUNT} --keyPath=/home/dev/.near-credentials/testnet/${CONTRACT_ACCOUNT}.json
+near deploy --wasmFile ./target/wasm32-unknown-unknown/release/dapi_server.wasm --accountId=${CONTRACT_ACCOUNT}
 ```
+If you get error on not enough balance. Run `near dev-deploy ...` and delete generated dev-xxxx account in favour of your account: `near delete dev-xxxx ${CONTRACT_ACCOUNT}`
 
 #### Run tests
 The tests are located in `near/client-test`, the `main` for tests is `near/client-test/src/test.js`.
